@@ -2,9 +2,14 @@
 zero/day1
 zero/day2
 zero/*.o
-zero/probe_*
 *.out
 a.out
+# hand-written probe executables (source .c/.cu is tracked; binaries are not)
+probes/ram_triad
+probes/cpu_flops
+probes/gpu_devquery
+probes/gpu_bandwidth
+probes/gpu_matmul
 
 # Disposable helpers
 _probe_*.sh
