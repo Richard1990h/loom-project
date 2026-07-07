@@ -111,3 +111,61 @@ reports NVIDIA GeForce RTX 4070, 12282 MiB, driver 610.47 (WSL CUDA
 passthrough working). FINGERPRINT check passed: full tree present, day1.c
 carries the sentinel "the loom weaves what the weaver wills",
 shakespeare.txt = 1,115,394 bytes.
+
+## Appended 2026-07-07 — DAY 2 optimizer: PRE-REGISTRATION (before any run)
+
+Registered BEFORE building/running zero/day2.c. Predictions are locked; the
+benchmark will publish hits AND misses against exactly these numbers.
+
+**Testbed A — the quadratic bowl.** f(x) = 1/2 xᵀA x with A diagonal, two
+eigenvalues placed at the extremes {λ_min = 1, λ_max = κ} (2-D captures the
+worst case; the extreme modes govern the rate). Optimum x* = 0. Target:
+reduce ‖x‖/‖x₀‖ to ≤ 1e-6, starting x₀ = (1,1).
+
+**Derivation (plain gradient descent, fixed step).** Update x ← x − α∇f =
+(I − αA)x, so mode i contracts by |1 − αλ_i| each step. The step that
+minimises the worst mode is α* = 2/(λ_min+λ_max) = 2/(1+κ), which equalises
+the two extreme modes at the same contraction factor
+  ρ = (κ − 1)/(κ + 1).
+Then ‖x_n‖ = ρⁿ‖x₀‖ exactly, so steps-to-target
+  n(ε) = ln ε / ln ρ,  ε = 1e-6.
+This is the strongest plain GD can do (oracle-tuned step); it is the bar our
+method must beat. (Declared convergence: this is the classical steepest-
+descent rate; re-derived here, not imported.)
+
+**PRE-REGISTERED PREDICTIONS — plain GD, oracle step α*=2/(1+κ):**
+| κ      | ρ=(κ−1)/(κ+1) | predicted steps to ‖x‖≤1e-6‖x₀‖ |
+|--------|---------------|----------------------------------|
+| 1      | 0             | 1                                |
+| 100    | 0.980198      | 691                              |
+| 10000  | 0.999800      | ~69,078                          |
+Prediction: plain GD steps grow ~linearly in κ (n ≈ (κ/2)·ln(1/ε) for κ≫1).
+Secondary prediction: with the *safe* untuned step α = 1/λ_max (what you use
+when you don't know the spectrum), it is ~2× worse: n ≈ κ·ln(1/ε), i.e.
+κ=100 → ~1,375; κ=10000 → ~138,150.
+
+**P-bars for OUR derived optimizer (per-parameter step normalised by a
+running estimate of each coordinate's gradient scale):**
+- P1: on Testbed A it reaches the same ‖x‖≤1e-6 target in a step count that
+  is essentially κ-INDEPENDENT — predict ≤ 60 steps for ALL of κ∈{1,100,10⁴}
+  (a diagonal gradient-scale normaliser ≈ diagonal Newton on a diagonal
+  quadratic, which removes the conditioning). 
+- P2 (the win): at κ=10000, ours reaches target in < 1/50 of plain-GD-oracle
+  steps (i.e. < ~1,380 vs ~69,078).
+- KILL CRITERION: if ours is not strictly better than plain-GD-oracle at
+  κ=10000 (steps_ours ≥ steps_GD), the adaptation is worthless — report it as
+  a failure, keep the number, do not bury it.
+
+**Testbed B — the day1 char-LM (2,078 params).** Same engine, real non-
+quadratic loss. Metric: GD steps to reach loss ≤ 0.20 (day1 reached ~0.179
+by step 3000 with its hand-tuned schedule). Prediction: our adaptive method
+reaches loss ≤ 0.20 in FEWER steps than plain fixed-step GD at that GD's best
+hand-swept constant step; predict ours ≤ 0.5× the GD step count. No oracle
+Hessian here, so this bar is directional, not a locked integer.
+
+**Convergence to declare in advance:** normalising each coordinate's step by a
+running root-mean-square of its gradient is the RMSProp/Adam family. If our
+from-geometry derivation lands there, we KEEP it (independent derivation =
+verification) and say so; constants (decay of the running estimate, ε floor,
+base step) will be picked by OUR OWN sweep on these two testbeds, not taken
+from any paper.
