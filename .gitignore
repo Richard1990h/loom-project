@@ -8,3 +8,22 @@ a.out
 
 # Disposable helpers
 _probe_*.sh
+
+# Secrets — never commit credentials of any kind
+.env
+.env.*
+*.env
+*token*
+*secret*
+*credential*
+credentials
+credentials.*
+*.key
+*.pem
+*.pfx
+id_rsa
+id_ed25519
+*.p12
+.netrc
+.git-credentials
+gh-token.txt
