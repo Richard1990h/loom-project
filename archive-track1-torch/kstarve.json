@@ -1,0 +1,16 @@
+{
+  "facts": 6000,
+  "chance_both_tokens": 0.0003429355281207133,
+  "core_params_non_memory": 22561,
+  "memory_params": 134240,
+  "A_with_memory_recall": 0.23233333230018616,
+  "A_memory_ablated_recall": 0.030666666105389595,
+  "B_never_memory_recall": 0.09566666930913925,
+  "steps_A": 9000,
+  "steps_B": 9000,
+  "memory_slots_used": 810,
+  "P1_memory_model_high_recall": false,
+  "P2_ablation_collapses": true,
+  "P3_core_alone_far_below": false,
+  "verdict": "MIXED \u2014 partial support, see individual predictions"
+}

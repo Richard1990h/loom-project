@@ -1,0 +1,240 @@
+{
+  "env": {
+    "device": "cpu (1 core)",
+    "torch": "2.12.1+cu130",
+    "python": "3.12.3"
+  },
+  "data": {
+    "corpus": "tiny shakespeare (public domain)",
+    "chars": 1115394,
+    "vocab": 65,
+    "train_chars": 1003854,
+    "val_chars": 111540
+  },
+  "config": {
+    "batch": 16,
+    "block": 96,
+    "steps": 533,
+    "lr": 0.003,
+    "min_lr": 0.0003,
+    "warmup": 30,
+    "loom": {
+      "d": 128,
+      "heads": 4,
+      "unique_blocks": 2,
+      "ffn_mult": 2,
+      "k_max": 4,
+      "ponder_tau": 0.01,
+      "mem_slots": 1024,
+      "mem_topk": 8,
+      "hyper_rank": 2
+    },
+    "vanilla": {
+      "d": 128,
+      "heads": 4,
+      "layers": 3,
+      "ffn_mult": 4
+    }
+  },
+  "params": {
+    "loom": 609217,
+    "vanilla": 615680,
+    "mismatch_pct": 1.06,
+    "loom_breakdown": {
+      "tok": 8320,
+      "pos": 12288,
+      "blocks": 264960,
+      "memory": 141632,
+      "carry": 82304,
+      "hyper": 99072,
+      "halt_ln": 256,
+      "halt": 129,
+      "ln_f": 256,
+      "TOTAL": 609217
+    }
+  },
+  "throughput": {
+    "loom_s_per_step": 0.42,
+    "van_s_per_step": 0.107,
+    "loom_tokens_per_s": 3661,
+    "van_tokens_per_s": 14417,
+    "train_tokens_each": 818688
+  },
+  "final": {
+    "loom_val_ce": 2.0903,
+    "van_val_ce": 2.1084,
+    "loom_no_memory": 2.0907,
+    "loom_no_hyper": 2.128,
+    "loom_k1_fixed": 2.1304,
+    "loom_k4_fixed": 4.0441
+  },
+  "halting": {
+    "mean_steps": 1.6084,
+    "std_steps": 0.5049,
+    "hist_steps_1_to_4": [
+      14738,
+      21828,
+      293,
+      5
+    ],
+    "pearson_r_steps_vs_ce": 0.1291,
+    "mean_loops_executed_batchlevel": 3.2083,
+    "n_val_tokens": 36864
+  },
+  "memory": {
+    "slots_total": 1024,
+    "slots_used_on_val": 295,
+    "top16_slot_share": 0.4315,
+    "retrievals_counted": 946176
+  },
+  "curves": {
+    "loom": [
+      {
+        "step": 0,
+        "train_ce_ema": 4.2247,
+        "val_ce": 4.1166
+      },
+      {
+        "step": 44,
+        "train_ce_ema": 3.1711,
+        "val_ce": 2.7348
+      },
+      {
+        "step": 88,
+        "train_ce_ema": 2.6271,
+        "val_ce": 2.5423
+      },
+      {
+        "step": 132,
+        "train_ce_ema": 2.5209,
+        "val_ce": 2.4951
+      },
+      {
+        "step": 176,
+        "train_ce_ema": 2.4521,
+        "val_ce": 2.4565
+      },
+      {
+        "step": 220,
+        "train_ce_ema": 2.4035,
+        "val_ce": 2.3979
+      },
+      {
+        "step": 264,
+        "train_ce_ema": 2.3382,
+        "val_ce": 2.3238
+      },
+      {
+        "step": 308,
+        "train_ce_ema": 2.2772,
+        "val_ce": 2.2768
+      },
+      {
+        "step": 352,
+        "train_ce_ema": 2.2253,
+        "val_ce": 2.2236
+      },
+      {
+        "step": 396,
+        "train_ce_ema": 2.1602,
+        "val_ce": 2.1733
+      },
+      {
+        "step": 440,
+        "train_ce_ema": 2.1288,
+        "val_ce": 2.1409
+      },
+      {
+        "step": 484,
+        "train_ce_ema": 2.084,
+        "val_ce": 2.1258
+      },
+      {
+        "step": 528,
+        "train_ce_ema": 2.0516,
+        "val_ce": 2.1007
+      },
+      {
+        "step": 532,
+        "train_ce_ema": 2.054,
+        "val_ce": 2.0988
+      }
+    ],
+    "vanilla": [
+      {
+        "step": 0,
+        "train_ce_ema": 4.2139,
+        "val_ce": 4.0919
+      },
+      {
+        "step": 44,
+        "train_ce_ema": 2.9375,
+        "val_ce": 2.6139
+      },
+      {
+        "step": 88,
+        "train_ce_ema": 2.569,
+        "val_ce": 2.5142
+      },
+      {
+        "step": 132,
+        "train_ce_ema": 2.5005,
+        "val_ce": 2.4923
+      },
+      {
+        "step": 176,
+        "train_ce_ema": 2.4354,
+        "val_ce": 2.4394
+      },
+      {
+        "step": 220,
+        "train_ce_ema": 2.3895,
+        "val_ce": 2.3688
+      },
+      {
+        "step": 264,
+        "train_ce_ema": 2.336,
+        "val_ce": 2.3424
+      },
+      {
+        "step": 308,
+        "train_ce_ema": 2.2775,
+        "val_ce": 2.2861
+      },
+      {
+        "step": 352,
+        "train_ce_ema": 2.2319,
+        "val_ce": 2.2433
+      },
+      {
+        "step": 396,
+        "train_ce_ema": 2.1644,
+        "val_ce": 2.1878
+      },
+      {
+        "step": 440,
+        "train_ce_ema": 2.131,
+        "val_ce": 2.1641
+      },
+      {
+        "step": 484,
+        "train_ce_ema": 2.0912,
+        "val_ce": 2.1399
+      },
+      {
+        "step": 528,
+        "train_ce_ema": 2.0582,
+        "val_ce": 2.1177
+      },
+      {
+        "step": 532,
+        "train_ce_ema": 2.0593,
+        "val_ce": 2.1206
+      }
+    ]
+  },
+  "samples": {
+    "loom": "\nBUUK:\nSus. you taw low the to mule ee.\nBlamst frowe ar of il.\nLUCrome, a sand sint I IN ford tharus shas deir heas\nAn I thaugh he is hon aster my amirteons heand as grean\nOnd apbettem, be they and for chobend keacke,\nIf far till wer the, our glaiom novent mulle\nWhat fith and the cop bur car thaput kis my and wither\nWhe for neloth the hibs on sitt a gon whis ",
+    "vanilla": "\n\nNUKIN INICK:\nWhat the do ndacke the well that to thee spet a cone of\nAld the you that mon\nSke of you mise thre be asien on are for if tring;\nPrey tied oithis to mand leat thatis as the sond the heeat.\n\n\nISone beank anliows sor the she mand\nAs the prarty plast be the nother dechp stold leeeests\nsof ther they knot 'pell your of enot day's somper eewor hing of"
+  }
+}

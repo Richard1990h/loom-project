@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOOM — Looped Operations Over Memory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..600&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --indigo: #1b2140;        /* dye-vat ground */
+    --indigo-deep: #141936;   /* shadow */
+    --panel: #222a52;         /* raised cloth */
+    --linen: #ece7da;         /* undyed thread — primary text */
+    --warp: #97a4d4;          /* pale warp thread — secondary text, rules */
+    --warp-dim: #5a648f;      /* faded thread — hairlines */
+    --brass: #c9a24b;         /* shuttle brass — accent */
+    --madder: #d4674f;        /* madder-red thread — the new knots only */
+    --max: 1060px;
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --body: "Archivo", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  body {
+    background: var(--indigo);
+    color: var(--linen);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--brass); color: var(--indigo-deep); }
+
+  a { color: var(--brass); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 3px;
+  }
+
+  .frame {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 4vw, 3rem);
+    position: relative;
+  }
+  /* the warp: one continuous thread running the length of the page */
+  .frame::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    left: clamp(0.4rem, 1.4vw, 1rem);
+    width: 1px;
+    background: linear-gradient(var(--warp-dim), var(--warp-dim) 60%, transparent);
+    opacity: 0.55;
+  }
+
+  .weft { padding-block: clamp(3.5rem, 8vw, 6.5rem); }
+  .weft + .weft { border-top: 1px solid rgba(151, 164, 212, 0.16); }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--brass);
+    display: block;
+    margin-bottom: 1.1rem;
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 560;
+    font-size: clamp(1.7rem, 3.6vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin-bottom: 1.25rem;
+    max-width: 24ch;
+  }
+
+  p { max-width: 62ch; }
+  p + p { margin-top: 1rem; }
+  .muted { color: var(--warp); }
+  em { font-style: italic; }
+  strong { font-weight: 600; color: var(--linen); }
+
+  /* ---------- hero ---------- */
+
+  .hero { padding-block: clamp(4rem, 10vw, 7.5rem) clamp(3rem, 7vw, 5.5rem); }
+
+  .wordmark {
+    position: relative;
+    display: inline-block;
+    line-height: 0.92;
+  }
+  .wordmark h1 {
+    position: relative;
+    z-index: 2;
+    font-family: var(--display);
+    font-weight: 880;
+    font-optical-sizing: auto;
+    font-size: clamp(4.4rem, 19vw, 12.5rem);
+    letter-spacing: 0.015em;
+    color: var(--linen);
+  }
+  .shuttle-thread {
+    position: absolute;
+    left: -3%; right: -3%;
+    top: 50%;
+    height: 34%;
+    transform: translateY(-50%);
+    overflow: visible;
+    pointer-events: none;
+  }
+  .shuttle-thread path {
+    fill: none;
+    stroke: var(--brass);
+    stroke-width: 5;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+  }
+  .thread-under { z-index: 1; }
+  .thread-over  { z-index: 3; }
+  /* the weave: the top copy of the thread shows only in alternating bands,
+     so the same line appears to pass over one letter and under the next */
+  @supports (mask-image: linear-gradient(black, black)) or (-webkit-mask-image: linear-gradient(black, black)) {
+    .thread-over {
+      -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 12.5%, transparent 12.5% 25%);
+              mask-image: repeating-linear-gradient(90deg, #000 0 12.5%, transparent 12.5% 25%);
+    }
+  }
+  @supports not ((mask-image: linear-gradient(black, black)) or (-webkit-mask-image: linear-gradient(black, black))) {
+    .thread-over { display: none; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .shuttle-thread path {
+      stroke-dasharray: 1600;
+      stroke-dashoffset: 1600;
+      animation: weave 2.1s cubic-bezier(0.6, 0, 0.2, 1) 0.25s forwards;
+    }
+  }
+  @keyframes weave { to { stroke-dashoffset: 0; } }
+
+  .tagline {
+    margin-top: 1.6rem;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 420;
+    font-size: clamp(1.2rem, 2.6vw, 1.6rem);
+    color: var(--warp);
+    max-width: 30ch;
+    line-height: 1.35;
+  }
+  .tagline b { color: var(--linen); font-weight: 560; font-style: normal; }
+
+  .chips {
+    margin-top: 2.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.6rem;
+    list-style: none;
+  }
+  .chips li {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--warp);
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--brass);
+  }
+
+  .status {
+    margin-top: 2.4rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--madder);
+    letter-spacing: 0.06em;
+  }
+
+  /* ---------- thesis ---------- */
+
+  .thesis p.lead {
+    font-family: var(--display);
+    font-weight: 380;
+    font-size: clamp(1.35rem, 3vw, 1.95rem);
+    line-height: 1.45;
+    max-width: 34ch;
+    letter-spacing: 0.002em;
+  }
+  .thesis p.lead b { font-weight: 620; color: var(--brass); }
+  .thesis .follow { margin-top: 1.75rem; color: var(--warp); }
+
+  /* ---------- schematic ---------- */
+
+  .schematic-scroll {
+    overflow-x: auto;
+    margin-top: 0.5rem;
+    padding-bottom: 0.75rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  .schematic {
+    min-width: 760px;
+    width: 100%;
+    display: block;
+    background: var(--indigo-deep);
+    border: 1px solid rgba(151, 164, 212, 0.22);
+    border-radius: 4px;
+  }
+  .schematic text {
+    font-family: var(--mono);
+    fill: var(--linen);
+  }
+  .schematic .lbl   { font-size: 12px; }
+  .schematic .lbl-s { font-size: 10.5px; fill: var(--warp); }
+  .schematic .lbl-b { font-size: 12px; fill: var(--brass); letter-spacing: 0.08em; }
+  .schematic .lbl-m { font-size: 10.5px; fill: var(--madder); }
+  figcaption {
+    margin-top: 0.9rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--warp);
+    max-width: 70ch;
+  }
+
+  /* ---------- mechanisms ---------- */
+
+  .mechanisms {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.4rem;
+    margin-top: 2.2rem;
+    list-style: none;
+  }
+  @media (max-width: 720px) { .mechanisms { grid-template-columns: 1fr; } }
+
+  .mech {
+    background: var(--panel);
+    border-radius: 4px;
+    padding: 1.6rem 1.5rem 1.7rem;
+    border-top: 3px solid var(--brass);
+  }
+  .mech .part {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+  .mech .part span { color: var(--warp); letter-spacing: 0.05em; text-transform: none; }
+  .mech h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 0.7rem 0 0.65rem;
+    line-height: 1.25;
+  }
+  .mech p { font-size: 0.98rem; color: var(--warp); }
+  .mech p strong { color: var(--linen); }
+
+  .why-parts {
+    margin-top: 1.8rem;
+    font-size: 0.95rem;
+    color: var(--warp);
+    max-width: 66ch;
+  }
+
+  /* ---------- dial ---------- */
+
+  .dial-panel {
+    margin-top: 2rem;
+    background: var(--indigo-deep);
+    border: 1px solid rgba(151, 164, 212, 0.22);
+    border-radius: 4px;
+    padding: 1.8rem clamp(1.2rem, 3vw, 2.2rem) 2rem;
+  }
+  .dial-row { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+  .dial-row label {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+  input[type="range"] {
+    flex: 1;
+    min-width: 180px;
+    accent-color: var(--brass);
+    height: 2px;
+  }
+  .dial-ends {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--warp-dim);
+    margin-top: 0.4rem;
+  }
+
+  .readouts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1.8rem;
+  }
+  @media (max-width: 620px) { .readouts { grid-template-columns: 1fr; } }
+  .readout .num {
+    font-family: var(--display);
+    font-weight: 640;
+    font-size: 2rem;
+    color: var(--linen);
+    line-height: 1.1;
+  }
+  .readout .num small { font-size: 1rem; color: var(--warp); font-weight: 400; }
+  .readout .cap {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--warp);
+    margin-top: 0.3rem;
+  }
+
+  .bars { margin-top: 2rem; display: grid; gap: 1.4rem; }
+  .bargroup .bg-title {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--warp);
+    margin-bottom: 0.6rem;
+  }
+  .bar { display: grid; grid-template-columns: 6.5rem 1fr 5.5rem; align-items: center; gap: 0.8rem; margin-top: 0.45rem; }
+  .bar .who { font-family: var(--mono); font-size: 0.75rem; color: var(--linen); }
+  .bar .track { background: rgba(151,164,212,0.14); border-radius: 2px; height: 12px; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 2px; width: 0%; transition: width 0.25s ease; }
+  .fill-loom  { background: var(--brass); }
+  .fill-dense { background: var(--warp-dim); }
+  .bar .val { font-family: var(--mono); font-size: 0.75rem; color: var(--warp); text-align: right; }
+  .dial-note { margin-top: 1.6rem; font-family: var(--mono); font-size: 0.72rem; color: var(--warp-dim); max-width: 70ch; }
+
+  /* ---------- ledger ---------- */
+
+  .ledger {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    margin-top: 2rem;
+  }
+  @media (max-width: 760px) { .ledger { grid-template-columns: 1fr; } }
+  .ledger h3 {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding-bottom: 0.7rem;
+    margin-bottom: 1.1rem;
+    border-bottom: 1px solid rgba(151,164,212,0.25);
+  }
+  .inherited h3 { color: var(--warp); }
+  .knots h3 { color: var(--madder); border-bottom-color: rgba(212,103,79,0.45); }
+  .ledger ul { list-style: none; }
+  .ledger li { padding-left: 1.1rem; position: relative; margin-bottom: 0.85rem; font-size: 0.95rem; color: var(--warp); }
+  .ledger li strong { color: var(--linen); font-weight: 600; }
+  .inherited li::before { content: "—"; position: absolute; left: 0; color: var(--warp-dim); }
+  .knots li::before { content: "✕"; position: absolute; left: 0; color: var(--madder); font-size: 0.8em; top: 0.2em; }
+  .ledger .yr { font-family: var(--mono); font-size: 0.72rem; color: var(--warp-dim); }
+
+  .problems { margin-top: 3rem; }
+  .problems h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 0.9rem;
+  }
+  .problems ul { list-style: none; max-width: 66ch; }
+  .problems li { padding-left: 1.1rem; position: relative; margin-bottom: 0.6rem; color: var(--warp); font-size: 0.97rem; }
+  .problems li::before { content: "?"; position: absolute; left: 0; color: var(--brass); font-family: var(--mono); }
+
+  /* ---------- targets ---------- */
+
+  .targets table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.8rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+  }
+  .targets th, .targets td {
+    text-align: left;
+    padding: 0.7rem 0.9rem 0.7rem 0;
+    border-bottom: 1px solid rgba(151,164,212,0.18);
+    vertical-align: top;
+  }
+  .targets th {
+    color: var(--brass);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+  }
+  .targets td:first-child { color: var(--warp); width: 34%; }
+  .targets caption {
+    caption-side: bottom;
+    text-align: left;
+    padding-top: 0.9rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--madder);
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    padding: 2.8rem 0 3.5rem;
+    border-top: 1px solid rgba(151,164,212,0.16);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: var(--warp-dim);
+    line-height: 1.9;
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="wordmark" aria-label="LOOM">
+      <svg class="shuttle-thread thread-under" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M -20 62 C 120 18, 220 92, 360 55 S 620 20, 760 60 S 940 88, 1020 42" />
+      </svg>
+      <h1>LOOM</h1>
+      <svg class="shuttle-thread thread-over" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M -20 62 C 120 18, 220 92, 360 55 S 620 20, 760 60 S 940 88, 1020 42" />
+      </svg>
+    </div>
+
+    <p class="tagline">Looped Operations Over Memory — a small model that <b>loops its compute</b> and <b>looks up its knowledge</b>.</p>
+
+    <ul class="chips">
+      <li>0.4B shared-weight core</li>
+      <li>knowledge in storage, not weights</li>
+      <li>depth 2–24 · learned per token</li>
+    </ul>
+
+    <p class="status">STATUS: BLUEPRINT · NO EMPIRICAL RESULTS · HYPOTHESES TO FALSIFY</p>
+  </header>
+
+  <!-- ================= THESIS ================= -->
+  <section class="weft thesis">
+    <span class="eyebrow">The bet</span>
+    <p class="lead">A large language model is mostly a warehouse with a small workshop attached. LOOM proposes we <b>stop shipping the warehouse</b> with every token.</p>
+    <p class="follow">Most parameters in a dense model sit in feed-forward layers acting as key–value stores for facts — and every one of those weights must stream through the processor for every token, whether the token needs them or not. On consumer hardware, that memory traffic, not arithmetic, is the bill. LOOM splits the two jobs: a tiny reasoning core small enough to stay cache-resident, run in a loop as many times as a token deserves, reading facts from a huge, cheap, editable latent memory that lives on ordinary storage. Depth becomes a dial. Knowledge becomes a file.</p>
+  </section>
+
+  <!-- ================= SCHEMATIC ================= -->
+  <section class="weft">
+    <span class="eyebrow">Schematic</span>
+    <h2>One pass through the machine</h2>
+    <figure>
+      <div class="schematic-scroll">
+        <svg class="schematic" viewBox="0 0 920 470" role="img" aria-label="LOOM architecture diagram: tokens are embedded, enter a recursive core of four shared blocks looped k times with a learned halt; the core reads from a large external latent memory, keeps state in thought registers, and is re-modulated each loop by a small hypernetwork; a halting head decides when to decode.">
+
+          <!-- defs -->
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#97a4d4"/>
+            </marker>
+            <marker id="arr-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#c9a24b"/>
+            </marker>
+            <marker id="arr-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#d4674f"/>
+            </marker>
+          </defs>
+
+          <!-- tokens in -->
+          <g>
+            <rect x="30" y="212" width="14" height="14" fill="none" stroke="#97a4d4"/>
+            <rect x="50" y="212" width="14" height="14" fill="none" stroke="#97a4d4"/>
+            <rect x="70" y="212" width="14" height="14" fill="none" stroke="#97a4d4"/>
+            <text class="lbl-s" x="30" y="248">tokens in</text>
+            <line x1="90" y1="219" x2="128" y2="219" stroke="#97a4d4" marker-end="url(#arr)"/>
+          </g>
+
+          <!-- embed -->
+          <rect x="130" y="196" width="78" height="46" rx="3" fill="#222a52" stroke="#97a4d4"/>
+          <text class="lbl" x="146" y="223">embed</text>
+          <line x1="208" y1="219" x2="252" y2="219" stroke="#97a4d4" marker-end="url(#arr)"/>
+
+          <!-- thought registers -->
+          <g>
+            <text class="lbl-b" x="292" y="78">HEDDLES · thought registers ×32</text>
+            <g fill="none" stroke="#c9a24b">
+              <rect x="292" y="88" width="13" height="13"/><rect x="310" y="88" width="13" height="13"/>
+              <rect x="328" y="88" width="13" height="13"/><rect x="346" y="88" width="13" height="13"/>
+              <rect x="364" y="88" width="13" height="13"/><rect x="382" y="88" width="13" height="13"/>
+              <rect x="400" y="88" width="13" height="13"/><rect x="418" y="88" width="13" height="13"/>
+            </g>
+            <text class="lbl-s" x="292" y="120">latent scratchpad · persists across loops &amp; positions</text>
+            <path d="M 348 130 L 348 158" stroke="#c9a24b" marker-end="url(#arr-b)" fill="none"/>
+            <path d="M 372 158 L 372 130" stroke="#c9a24b" marker-end="url(#arr-b)" fill="none"/>
+            <text class="lbl-s" x="384" y="150">read / write each loop</text>
+          </g>
+
+          <!-- recursive core -->
+          <g>
+            <rect x="254" y="160" width="230" height="150" rx="6" fill="#222a52" stroke="#c9a24b" stroke-width="1.5"/>
+            <text class="lbl-b" x="270" y="186">SHUTTLE · recursive core</text>
+            <text class="lbl" x="270" y="212">4 shared blocks · d 1536</text>
+            <text class="lbl-s" x="270" y="232">attention · thin FFN (2×)</text>
+            <text class="lbl-s" x="270" y="250">memory read port · +ΔW</text>
+            <text class="lbl-s" x="270" y="282">~0.4B params · cache-resident</text>
+            <!-- loop arrow -->
+            <path d="M 484 200 C 540 190, 540 280, 484 272" fill="none" stroke="#c9a24b" stroke-width="1.5" marker-end="url(#arr-b)"/>
+            <text class="lbl-b" x="516" y="230">×k</text>
+            <text class="lbl-s" x="502" y="248">k = 2…24</text>
+          </g>
+
+          <!-- hypernet -->
+          <g>
+            <rect x="94" y="76" width="150" height="58" rx="3" fill="none" stroke="#d4674f" stroke-dasharray="4 3"/>
+            <text class="lbl-m" x="108" y="99">JACQUARD HEAD</text>
+            <text class="lbl-s" x="108" y="116">hypernet · ~12M</text>
+            <path d="M 200 134 C 224 152, 240 164, 262 176" fill="none" stroke="#d4674f" stroke-dasharray="4 3" marker-end="url(#arr-m)"/>
+            <text class="lbl-m" x="150" y="158">rank-8 ΔW / loop</text>
+          </g>
+
+          <!-- memory warp beam -->
+          <g>
+            <ellipse cx="740" cy="150" rx="105" ry="20" fill="#222a52" stroke="#97a4d4"/>
+            <path d="M 635 150 L 635 300 A 105 20 0 0 0 845 300 L 845 150" fill="#222a52" stroke="#97a4d4"/>
+            <ellipse cx="740" cy="150" rx="105" ry="20" fill="#1b2140" stroke="#97a4d4"/>
+            <text class="lbl-b" x="662" y="200">WARP BEAM</text>
+            <text class="lbl" x="662" y="222">latent memory</text>
+            <text class="lbl-s" x="662" y="244">product-key · 10⁹–10¹¹</text>
+            <text class="lbl-s" x="662" y="262">(key, value) latents</text>
+            <text class="lbl-s" x="662" y="284">int8 · RAM + NVMe</text>
+            <!-- read arrow -->
+            <path d="M 632 218 L 490 218" stroke="#97a4d4" marker-end="url(#arr)" fill="none"/>
+            <text class="lbl-s" x="508" y="210">top-8 read / loop</text>
+            <!-- write arrow -->
+            <path d="M 490 262 L 632 262" stroke="#97a4d4" stroke-dasharray="4 3" marker-end="url(#arr)" fill="none"/>
+            <text class="lbl-s" x="508" y="282">write (train-time)</text>
+          </g>
+
+          <!-- halt + decode -->
+          <g>
+            <path d="M 369 310 L 369 344" stroke="#97a4d4" marker-end="url(#arr)" fill="none"/>
+            <rect x="300" y="346" width="140" height="44" rx="3" fill="#222a52" stroke="#97a4d4"/>
+            <text class="lbl" x="318" y="372">halt head p(stop)</text>
+            <text class="lbl-s" x="300" y="412">loop again if p &lt; τ · else ↓</text>
+            <path d="M 440 368 L 560 368" stroke="#97a4d4" marker-end="url(#arr)" fill="none"/>
+            <rect x="562" y="346" width="88" height="44" rx="3" fill="#222a52" stroke="#97a4d4"/>
+            <text class="lbl" x="580" y="372">decode</text>
+            <line x1="650" y1="368" x2="700" y2="368" stroke="#97a4d4" marker-end="url(#arr)"/>
+            <rect x="704" y="361" width="14" height="14" fill="none" stroke="#97a4d4"/>
+            <rect x="724" y="361" width="14" height="14" fill="none" stroke="#97a4d4"/>
+            <text class="lbl-s" x="704" y="400">tokens out</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Fig. 1 — Each token group circulates through the same four blocks up to 24 times. Every pass may read from memory, update the registers, and receive fresh low-rank weight deltas. A halting head decides when the cloth is done.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= MECHANISMS ================= -->
+  <section class="weft">
+    <span class="eyebrow">Mechanisms</span>
+    <h2>Four parts, named for the machine that invented programmability</h2>
+
+    <ul class="mechanisms">
+      <li class="mech">
+        <div class="part">Shuttle <span>· the recursive core</span></div>
+        <h3>Depth is a dial, not a purchase</h3>
+        <p>One stack of four shared transformer blocks (~0.4B params) iterated 2–24 times per token group, with a learned halting head trained against an explicit compute price. The weights fit in on-chip cache and <strong>stay there</strong> — each extra "layer" costs arithmetic but zero extra weight traffic. Like a shuttle, it crosses the same shed again and again; the cloth gets deeper, the machine doesn't get bigger.</p>
+      </li>
+      <li class="mech">
+        <div class="part">Warp beam <span>· externalized knowledge</span></div>
+        <h3>Facts live in storage, not in matmuls</h3>
+        <p>A product-key latent memory: billions of (key, value) vector pairs written <strong>during training</strong>, held int8 in RAM and NVMe, retrieved in O(√N) with two-level keys — top-8 reads per loop. This is not text RAG bolted on after; the values are learned latents, gradient-shaped to be exactly what the core wants to consume. FFNs shrink to thin skill layers. Side effect: knowledge becomes editable and auditable, entry by entry, with no retraining.</p>
+      </li>
+      <li class="mech">
+        <div class="part">Heddles <span>· thought registers</span></div>
+        <h3>Chain-of-thought without the tokens</h3>
+        <p>Thirty-two persistent latent slots read and written by cross-attention on every loop, surviving across iterations <strong>and</strong> across positions in a segment — the same scratchpad serves depth and time. The model drafts a plan in vector space before it spends a single output token, the way heddles hold the pattern between passes of the shuttle. Trained by distilling a teacher's written rationales into register trajectories.</p>
+      </li>
+      <li class="mech">
+        <div class="part">Jacquard head <span>· context hypernetwork</span></div>
+        <h3>The model reprograms itself per problem</h3>
+        <p>A ~12M-parameter controller reads the register summary and emits rank-8 weight deltas for the shared blocks — refreshed <strong>every loop</strong>, so iteration 3 can run different effective weights than iteration 1. One physical core, many virtual specialists. In 1804 Jacquard's punch-card head made a loom the first programmable machine; here the punch card advances once per pass.</p>
+      </li>
+    </ul>
+
+    <p class="why-parts">The names aren't decoration — each mapping is doing work. The shuttle really does loop; the warp beam really is where all the thread is stored; heddles really do hold state between passes; and the Jacquard attachment really was a program that reconfigured the machine per pattern. The whole architecture is a two-century-old idea returned home: <em>a small machine, richly re-instructed, beats a big machine run once.</em></p>
+  </section>
+
+  <!-- ================= ECONOMICS / DIAL ================= -->
+  <section class="weft">
+    <span class="eyebrow">Why the small platform bangs bigger</span>
+    <h2>Pay for thinking only where thinking happens</h2>
+    <p class="muted">On phones and laptops, token latency is dominated by streaming weights from memory, not by math. A cache-resident core makes that cost flat no matter how deep you loop — and the halting head only loops where the token is hard. Drag the dial:</p>
+
+    <div class="dial-panel">
+      <div class="dial-row">
+        <label for="difficulty">Task difficulty</label>
+        <div style="flex:1; min-width:200px;">
+          <input type="range" id="difficulty" min="1" max="10" value="4" step="1" aria-describedby="dial-note">
+          <div class="dial-ends"><span>"the cat sat…"</span><span>competition math</span></div>
+        </div>
+      </div>
+
+      <div class="readouts">
+        <div class="readout"><div class="num" id="ro-loops">–</div><div class="cap">loops (k)</div></div>
+        <div class="readout"><div class="num" id="ro-depth">–</div><div class="cap">effective blocks</div></div>
+        <div class="readout"><div class="num" id="ro-flops">–<small> GF/tok</small></div><div class="cap">LOOM compute</div></div>
+      </div>
+
+      <div class="bars">
+        <div class="bargroup">
+          <div class="bg-title">Compute per token</div>
+          <div class="bar"><span class="who">LOOM</span><div class="track"><div class="fill fill-loom" id="bar-loom-c"></div></div><span class="val" id="val-loom-c">–</span></div>
+          <div class="bar"><span class="who">dense 7B</span><div class="track"><div class="fill fill-dense" style="width:100%"></div></div><span class="val">≈14 GF</span></div>
+        </div>
+        <div class="bargroup">
+          <div class="bg-title">Weight traffic per token (int8, uncached)</div>
+          <div class="bar"><span class="who">LOOM</span><div class="track"><div class="fill fill-loom" id="bar-loom-w"></div></div><span class="val">0.4 GB · resident</span></div>
+          <div class="bar"><span class="who">dense 7B</span><div class="track"><div class="fill fill-dense" style="width:100%"></div></div><span class="val">≈7 GB</span></div>
+        </div>
+      </div>
+
+      <p class="dial-note" id="dial-note">Back-of-envelope arithmetic (2·params per forward pass, int8 weights), for intuition only — no KV-cache subtleties, no benchmarks. The point survives the sloppiness: even at maximum depth, LOOM's compute reaches roughly dense-7B parity while its weight traffic stays two orders of magnitude smaller — and the average token exits after a handful of loops.</p>
+    </div>
+
+    <p class="why-parts" style="margin-top:2rem;">The second economy is knowledge. Model capacity bought as HBM-resident weights costs orders of magnitude more per gigabyte than capacity bought as NVMe-resident memory entries. LOOM moves the fact warehouse onto the cheap curve — and because entries are discrete, a wrong fact is fixed by writing one row, not by finetuning a network.</p>
+  </section>
+
+  <!-- ================= LEDGER ================= -->
+  <section class="weft">
+    <span class="eyebrow">Honesty ledger</span>
+    <h2>What's inherited, what's actually new</h2>
+    <p class="muted">Every thread here has been spun somewhere in the literature. Claiming otherwise would be false. The bet is in the knots — the way they're tied together, and one deliberately hostile training objective.</p>
+
+    <div class="ledger">
+      <div class="inherited">
+        <h3>Inherited threads</h3>
+        <ul>
+          <li><strong>Weight-tied recursion</strong> — Universal Transformers <span class="yr">'18</span>; Mixture-of-Recursions <span class="yr">'25</span></li>
+          <li><strong>Learned halting</strong> — Adaptive Computation Time <span class="yr">'16</span>; PonderNet <span class="yr">'21</span></li>
+          <li><strong>Product-key memory layers</strong> — Lample et al. <span class="yr">'19</span>; scaled memory layers <span class="yr">'24–'25</span></li>
+          <li><strong>Retrieval as capacity</strong> — kNN-LM <span class="yr">'20</span>; RETRO <span class="yr">'22</span>; Memorizing Transformers <span class="yr">'22</span></li>
+          <li><strong>Latent-space reasoning</strong> — Coconut <span class="yr">'24</span></li>
+          <li><strong>Hypernetworks &amp; low-rank deltas</strong> — Ha et al. <span class="yr">'16</span>; LoRA <span class="yr">'21</span></li>
+        </ul>
+      </div>
+      <div class="knots">
+        <h3>New knots — the bets</h3>
+        <ul>
+          <li><strong>Knowledge starving.</strong> Train with FFNs deliberately too thin plus a penalty on closed-book recall, so facts have <em>nowhere to live except memory</em>. Memory as the primary store, not a bolt-on — the untested core of the whole design.</li>
+          <li><strong>Modulation inside the loop.</strong> Hypernet deltas refreshed per iteration, so recursion isn't running the same function k times but a short learned <em>program</em> of k related functions.</li>
+          <li><strong>Halting priced in hardware terms.</strong> The ponder cost tied to a real budget (joules, ms), making depth a deployment knob you can tune after training.</li>
+          <li><strong>One scratchpad for depth and time.</strong> Registers shared across loop iterations and sequence positions, coupling latent planning to adaptive depth.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="problems">
+      <h3>Open problems a serious attempt would hit first</h3>
+      <ul>
+        <li>Gradient stability through 24 weight-tied iterations with per-loop deltas — recursion training is notoriously touchy.</li>
+        <li>The memory write policy: what earns an entry, when entries merge, how to stop retrieval collapse onto a few hot keys.</li>
+        <li>NVMe tail latency turning into token-time jitter; hot-set caching has to actually work.</li>
+        <li>Evaluation hygiene: a writable memory can memorize the test set unless provenance is tracked per entry.</li>
+        <li>Whether "knowledge starving" harms fluent composition — some facts may need to live in weights to be usable at speed.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= TARGETS ================= -->
+  <section class="weft targets">
+    <span class="eyebrow">Spec sheet</span>
+    <h2>Design targets</h2>
+    <table>
+      <caption>✕ Targets are hypotheses to falsify — nothing on this page is a measured result.</caption>
+      <thead>
+        <tr><th scope="col">Dimension</th><th scope="col">Target</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Core</td><td>4 shared blocks · d 1536 · ~0.4B params · int8 cache-resident</td></tr>
+        <tr><td>Recursion</td><td>k ∈ [2, 24] · corpus-mean ≈ 6 · halting τ tunable at deploy</td></tr>
+        <tr><td>Memory</td><td>8B–64B latent entries · product keys · top-8/loop · 2–4 GB RAM hot set + NVMe</td></tr>
+        <tr><td>Registers</td><td>32 slots × d · read/write every loop · persist per segment</td></tr>
+        <tr><td>Hypernet</td><td>~12M params · rank-8 ΔW on QKV + FFN · refreshed per loop</td></tr>
+        <tr><td>Training</td><td>distill from a large teacher · latent-CoT into registers · knowledge-starving objective</td></tr>
+        <tr><td>Quality goal</td><td>7B–13B dense-class behavior from a 0.4B core on consumer hardware</td></tr>
+        <tr><td>Knowledge edit</td><td>single-entry write · milliseconds · with provenance record</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    LOOM — Looped Operations Over Memory · a speculative architecture blueprint, drafted July 2026<br>
+    Woven with Claude. The loom metaphor is owed to Joseph-Marie Jacquard, whose 1804 punch-card head made a textile machine the ancestor of every computer — including the ones that would run this.
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var slider = document.getElementById("difficulty");
+    var roLoops = document.getElementById("ro-loops");
+    var roDepth = document.getElementById("ro-depth");
+    var roFlops = document.getElementById("ro-flops");
+    var barC = document.getElementById("bar-loom-c");
+    var barW = document.getElementById("bar-loom-w");
+    var valC = document.getElementById("val-loom-c");
+
+    var GF_PER_LOOP = 0.76;   // ≈ 2 × 0.38B params, in GFLOP-ish units
+    var DENSE_GF = 14.0;      // ≈ 2 × 7B
+    var DENSE_GB = 7.0;       // int8 weights streamed per token
+
+    function update() {
+      var s = Number(slider.value);                       // 1..10
+      var k = Math.max(2, Math.min(24, Math.round(2 + (s - 1) * (22 / 9))));
+      var gf = k * GF_PER_LOOP;
+
+      roLoops.textContent = k;
+      roDepth.textContent = k * 4;
+      roFlops.firstChild.nodeValue = gf.toFixed(1);
+
+      barC.style.width = Math.min(100, (gf / DENSE_GF) * 100).toFixed(1) + "%";
+      valC.textContent = gf.toFixed(1) + " GF";
+      barW.style.width = ((0.4 / DENSE_GB) * 100).toFixed(1) + "%";
+    }
+
+    slider.addEventListener("input", update);
+    update();
+  })();
+</script>
+
+</body>
+</html>

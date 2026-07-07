@@ -1,0 +1,10 @@
+# Build artifacts — binaries and objects are reproducible from source
+zero/day1
+zero/day2
+zero/*.o
+zero/probe_*
+*.out
+a.out
+
+# Disposable helpers
+_probe_*.sh
