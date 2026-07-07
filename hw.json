@@ -1,0 +1,68 @@
+{
+  "_meta": {
+    "purpose": "Measured hardware truth for this machine. All future design math cites THIS file, never spec sheets. Every number came from a hand-written C/CUDA probe in probes/ (instruments, exempt from the no-library rule). Best-of-N timing.",
+    "date": "2026-07-07",
+    "host": "native Windows 10 -> WSL2 Ubuntu 26.04, gcc 15.2.0, CUDA 12.4 (nvcc), driver reports CUDA 13.0",
+    "machine": "RTX 4070 12GB + Ryzen 9 7950X (16c/32t) + 64GB DDR5"
+  },
+
+  "cpu": {
+    "probe": "probes/cpu_flops.c (AVX2 256-bit FMA, 12 accumulators, OpenMP) + probes/ram_triad.c (STREAM triad)",
+    "threads": 32,
+    "isa_used": "avx2-fma256",
+    "fp64_gflops": 934.4,
+    "fp32_gflops": 1876.3,
+    "note_flops": "Sustained measured throughput, not a vendor peak. fp32 is a clean 2x fp64, confirming true 256-bit vectorization (~73% of Zen4 AVX2 peak under all-core thermal/freq limits). AVX-512 double-pumping could roughly 2x this; recorded as deferred, not claimed."
+  },
+
+  "host_ram": {
+    "probe": "probes/ram_triad.c",
+    "kernel": "STREAM triad a[i]=b[i]+s*c[i], 3 doubles moved/elem, 1.15 GiB working set (> LLC)",
+    "bandwidth_gbps": 47.19,
+    "note": "Dual-channel DDR5 sustained; STREAM triad is typically 60-70% of theoretical channel peak."
+  },
+
+  "gpu_device": {
+    "probe": "probes/gpu_devquery.cu",
+    "name": "NVIDIA GeForce RTX 4070",
+    "sm_count": 46,
+    "compute_capability": "8.9",
+    "sm_clock_mhz": 2565,
+    "mem_clock_mhz": 10501,
+    "mem_bus_width_bits": 192,
+    "l2_cache_bytes": 37748736,
+    "total_mem_gib": 11.994,
+    "cuda_runtime": "12.4",
+    "cuda_driver_api": "13.0"
+  },
+
+  "gpu_vram_bandwidth": {
+    "probe": "probes/gpu_bandwidth.cu (grid-stride copy kernel c[i]=a[i], 2*bytes moved)",
+    "streaming_copy_gbps": 384.6,
+    "buffer_bytes": 1073741824,
+    "note": "~76% of the 504 GB/s spec peak; this measured number, not the spec, is the ceiling for the memory-bound thesis."
+  },
+
+  "pcie": {
+    "probe": "probes/gpu_bandwidth.cu (timed cudaMemcpy, cudaEvent)",
+    "h2d_pinned_gbps": 26.74,
+    "d2h_pinned_gbps": 26.29,
+    "h2d_pageable_gbps": 16.05,
+    "d2h_pageable_gbps": 12.21,
+    "note": "PCIe 4.0 x16. Pinned host memory ~1.6-2.1x faster than pageable. ~26.7 GB/s pinned is the effective host<->device link budget; the ~25 GB/s assumption in the brief is confirmed by measurement."
+  },
+
+  "gpu_fp32_matmul": {
+    "probe": "probes/gpu_matmul.cu (hand-written, no cuBLAS), N=2048 square",
+    "naive_gflops": 2106.6,
+    "tiled_gflops": 2730.3,
+    "tiled_speedup_vs_naive": 1.30,
+    "correctness_naive_vs_tiled_maxrel": 0.0,
+    "note": "Hand-written kernels only. Tiled (16x16 shared memory) beats naive by 1.30x. Both are far below the card's fp32 arithmetic peak (~29 TFLOPs) because these are simple kernels with no register blocking / vectorized loads; that headroom is a known future rung, not a defect. Establishes our hand-written baseline."
+  },
+
+  "gpu_bf16_tensorcore": {
+    "value": null,
+    "note": "DEFERRED, not faked. RTX 4070 (CC 8.9) has 4th-gen tensor cores with bf16/fp16 support, but a correct hand-written WMMA/mma probe is a later rung. Recorded null per standing order: no measurement, no number."
+  }
+}

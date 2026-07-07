@@ -169,3 +169,54 @@ from-geometry derivation lands there, we KEEP it (independent derivation =
 verification) and say so; constants (decay of the running estimate, ε floor,
 base step) will be picked by OUR OWN sweep on these two testbeds, not taken
 from any paper.
+
+## Appended 2026-07-07 — PHASE 0 (PURE): MEASURED RESULTS
+
+All numbers executed on this machine (RTX 4070 + Ryzen 9 7950X) via WSL2
+Ubuntu. Probes are hand-written C/CUDA in probes/ (instruments). Full machine
+truth is in hw.json; highlights:
+- Host RAM (STREAM triad): **47.19 GB/s**.
+- CPU AVX2 FMA: **fp64 934 GFLOP/s, fp32 1876 GFLOP/s** (32 threads).
+- VRAM streaming copy: **384.6 GB/s** (76% of the 504 spec; the measured
+  number is the ceiling we design against).
+- PCIe 4.0 pinned: **26.7 GB/s H2D / 26.3 GB/s D2H** (pageable 16.1 / 12.2).
+  Confirms the brief's ~25 GB/s host<->device assumption by measurement.
+- Hand-written fp32 matmul (N=2048): **naive 2107, tiled 2730 GFLOP/s**
+  (tiled 1.30x naive, bit-identical). Far below the ~29 TFLOP arithmetic
+  peak — simple kernels, a known future rung, not a defect.
+- bf16 / tensor-core: **null, deferred** — recorded honestly, never faked.
+
+**Day 2 optimizer — scored against the pre-registered bars (zero/day2.c):**
+Carried-over engine gradcheck after all changes: max rel err **8.20e-07 <
+1e-6 → PASS** (day1's own gradcheck also still passes; the value differs only
+because day2 samples different random entries under a fixed seed).
+
+Derived method = per-coordinate step ÷ running RMS of that coordinate's
+gradient. DECLARED CONVERGENCE: this is the RMSProp family; kept as
+independent re-derivation. Constants chosen by our own sweep (β=0.9, ε=1e-8,
+base step swept).
+
+Testbed A — quadratic bowl, steps to ‖x‖ ≤ 1e-6‖x₀‖:
+| κ      | GD (oracle step), predicted | GD measured | OURS measured |
+|--------|-----------------------------|-------------|---------------|
+| 1      | 1                           | 1           | 4             |
+| 100    | 691                         | 691         | 4             |
+| 10000  | ~69,078                     | 69,078      | 4             |
+- Plain-GD predictions HIT to the integer (1 / 691 / 69,078) — the pre-
+  registered κ-linear degradation is exactly what the machine did.
+- P1 (ours κ-independent, ≤60 steps ∀κ): **HIT** — 4 steps flat, for all κ.
+- P2 (ours < 1/50 of GD-oracle at κ=10⁴, i.e. <~1,382): **HIT** — 4 vs
+  69,078 (≈17,000× fewer steps).
+- KILL criterion (ours ≥ GD at κ=10⁴): **not triggered**.
+- Honesty note: the diagonal quadratic is the BEST case for a diagonal RMS
+  normaliser (it exactly removes per-axis conditioning), so 4-steps-flat is
+  the idealised win, not a general guarantee. Testbed B is the harder test.
+
+Testbed B — day1 char-LM (2,078 params), steps to loss ≤ 0.20 (cap 5000):
+- Plain GD best: **86 steps** at lr=2.0 (final loss 0.2000).
+- OURS best: **30 steps** at lr=0.03 (final loss 0.1969).
+- Prediction (ours ≤ 0.5× GD): **HIT** — 30/86 = 0.35×.
+
+Verdict: every pre-registered bar met; no misses to report this rung. The
+optimizer adaptation is real and measured, with the caveat that Testbed A's
+result is the idealised diagonal case. Next rung (Day 3): sequence machinery.

@@ -14,8 +14,8 @@
 #include <cstdlib>
 #include <cuda_runtime.h>
 
-#define CK(x) do{ cudaError_t e=(x); if(e!=cudaSuccess){ \
-    printf("{\"error\":\"%s at line %d\"}\n",cudaGetErrorString(e),__LINE__); \
+#define CK(x) do{ cudaError_t err_=(x); if(err_!=cudaSuccess){ \
+    printf("{\"error\":\"%s at line %d\"}\n",cudaGetErrorString(err_),__LINE__); \
     return 1; } }while(0)
 
 __global__ void copyKernel(const float* __restrict__ a, float* __restrict__ c, long n){
