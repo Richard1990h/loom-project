@@ -203,7 +203,7 @@ int main(void){
     long q_gd[3], q_ours[3]; double q_oursA[3];
     for(int i=0;i<3;i++){
         double k=kappas[i];
-        double aopt=2.0/(1.0+k);
+        double aopt=1.0/(1.0+k);
         long ngd=quad_gd(k,aopt);
         long best=-1; double bestA=0;
         for(int a=0;a<6;a++){ long n=quad_ours(k,our_alphas[a],0.9,1e-8);
