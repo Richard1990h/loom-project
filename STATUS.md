@@ -17,7 +17,8 @@ Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 | 4a | fp32 engine port + dual-precision gradcheck | **done** | 74dc114 |
 | gov | governance: reference.json, verify.sh, branch protection, STATUS, prove-it (verify RED demonstrated) | **done*** | a5511a9 |
 | gov-ci | CI workflow live; GREEN on main; CI-RED demoed; protection binds (red PR merge refused) | **done** | b52ef89 |
-| 4b | CUDA kernels: SGEMM 14303 GFLOP/s (bar 8190 HIT), fused attn fwd/bwd, RMSProp, gather/scatter — all fp64-verified; hw.json updated | **done** | (landing) |
+| 4b | CUDA kernels: SGEMM 14303 GFLOP/s (bar 8190 HIT), fused attn fwd/bwd, RMSProp, gather/scatter — all fp64-verified; hw.json updated | **done** | c4544ce |
+| data | Data Refinery stage-1: 14 docs / 5.68 MiB Gutenberg, manifest+provenance; DATA.md; human checkpoints | **done** | (landing) |
 | 4c | CPU-fp64 vs GPU-fp32 training parity (gate before GPU training) | todo | — |
 | 5d | BPE tokenizer in C (lossless round-trip proof, chars/token) | todo | — |
 | 5e | full transformer LM in ZERO engine (causality + gradcheck on assembled stack) | todo | — |
@@ -44,3 +45,14 @@ States: todo / doing / done. Update the state + commit sha as each rung lands.
 
 (Long-run infrastructure — tmux launcher, watchdog restart-from-checkpoint,
 run dir layout — is created with rung 5g when the first real training starts.)
+
+## Human checkpoints — moments the human personally tests
+These belong to the human; STOP and alert loudly when each is reached. The
+human's verdict is logged VERBATIM in ZERO.md (their words, not a summary).
+1. **Day 5 — `make talk`.** After the chat fine-tune, the human runs the REPL
+   and holds a live conversation. Machine cannot self-certify this.
+2. **Blind A/B (base vs chat-tuned).** Same 10 prompts through both models,
+   outputs shown blind/unlabeled; the human picks which is better per prompt.
+3. **Tier-2 — 20 everyday questions.** After tier-2 training, the human asks
+   20 ordinary questions and judges coherence.
+Each verdict → an entry in ZERO.md quoting the human exactly.

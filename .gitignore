@@ -17,6 +17,10 @@ probes/gpu_matmul_fast
 probes/gpu_kernels
 probes/gpu_attention
 
+# Corpus bytes — gigabytes not tracked; data/manifest.json IS tracked
+data/raw/
+data/clean/
+
 # Disposable helpers
 _probe_*.sh
 

@@ -1,0 +1,241 @@
+{
+  "_meta": {
+    "stage": "1",
+    "purpose": "Day-5 milestone pretrain corpus (public-domain English, simple/children's-leaning).",
+    "built": "2026-07-07",
+    "builder": "data/build_corpus.py (instrument, stdlib only)",
+    "note": "data/raw and data/clean are gitignored (bytes not tracked); this manifest is the tracked, reproducible record. chars-per-token reported after the tokenizer (Day 5d)."
+  },
+  "totals": {
+    "docs": 14,
+    "bytes_raw": 6306466,
+    "bytes_clean": 5956264,
+    "mib_clean": 5.68
+  },
+  "documents": [
+    {
+      "id": 11,
+      "title": "Alice's Adventures in Wonderland",
+      "source_url": "https://www.gutenberg.org/cache/epub/11/pg11.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 174311,
+      "bytes_clean": 151095,
+      "sha256_clean": "b44b499274ef98e0bc12c190ee08d9c63480b7c96946101a540a0cb24b3a944c",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Through the Looking-Glass",
+      "source_url": "https://www.gutenberg.org/cache/epub/12/pg12.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 196534,
+      "bytes_clean": 172680,
+      "sha256_clean": "b325755088909c009cf8fd0df6c4179d24a0730aceb15f3411616bfb95f05b3d",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 55,
+      "title": "The Wonderful Wizard of Oz",
+      "source_url": "https://www.gutenberg.org/files/55/55-0.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 217558,
+      "bytes_clean": 212704,
+      "sha256_clean": "94a11d5818c4e3367290d16ab4e9cd909a67ea544afd271be92309e90b31fbbf",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 271,
+      "title": "Black Beauty",
+      "source_url": "https://www.gutenberg.org/files/271/271-0.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 307560,
+      "bytes_clean": 307458,
+      "sha256_clean": "6630d911f45f5d5e9802dba896423f2b8669475a328f2e10f73178a728c07765",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 289,
+      "title": "The Wind in the Willows",
+      "source_url": "https://www.gutenberg.org/cache/epub/289/pg289.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 358358,
+      "bytes_clean": 332402,
+      "sha256_clean": "b9b571780cae8b1876f5163c0872e174a58ba905893fbfa36b4696f33967259e",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 45,
+      "title": "Anne of Green Gables",
+      "source_url": "https://www.gutenberg.org/cache/epub/45/pg45.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 606693,
+      "bytes_clean": 576121,
+      "sha256_clean": "bd14660006ea9d0394bb29548740dac66f9987d68876163f509deacfb5d1e9b0",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 2591,
+      "title": "Grimms' Fairy Tales",
+      "source_url": "https://www.gutenberg.org/cache/epub/2591/pg2591.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 560165,
+      "bytes_clean": 531096,
+      "sha256_clean": "7a46bd703893bdc54e79be63e9a69fe63d793781ce534e425103e0447603abc4",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Peter Pan",
+      "source_url": "https://www.gutenberg.org/cache/epub/16/pg16.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 288769,
+      "bytes_clean": 262746,
+      "sha256_clean": "f093a7678a91786d3d4b22cbf82f16f9ddb917939db0c4b102a4c90fcf855240",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 514,
+      "title": "Little Women",
+      "source_url": "https://www.gutenberg.org/cache/epub/514/pg514.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 1071405,
+      "bytes_clean": 1030871,
+      "sha256_clean": "c6308b76332136d22a5dfc45e7e4eb8aaa5a8d416ad032fd5544f96af46a0231",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 120,
+      "title": "Treasure Island",
+      "source_url": "https://www.gutenberg.org/cache/epub/120/pg120.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 399861,
+      "bytes_clean": 372620,
+      "sha256_clean": "ef67b01f998cbd2c75650bd8aad781ddedb50dccc9d4725eefb93efa68a72f71",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 902,
+      "title": "The Happy Prince and Other Tales",
+      "source_url": "https://www.gutenberg.org/cache/epub/902/pg902.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 112604,
+      "bytes_clean": 90836,
+      "sha256_clean": "e314377d67fc24e95c435a7f21afc0cf3617bf48b062062ec1f0217ba6b3e74b",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 1342,
+      "title": "Pride and Prejudice",
+      "source_url": "https://www.gutenberg.org/cache/epub/1342/pg1342.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 772386,
+      "bytes_clean": 737914,
+      "sha256_clean": "97acc34c1adc6ccf16a7c99fb41000e7b2182cfefb74fa9d6a5c858d86e1eddc",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 158,
+      "title": "Emma",
+      "source_url": "https://www.gutenberg.org/cache/epub/158/pg158.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 933709,
+      "bytes_clean": 897480,
+      "sha256_clean": "17df39a0375ebac2959aef48ab763bd68f69557a6004aede94d43cc91e04b85a",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    },
+    {
+      "id": 64317,
+      "title": "The Great Gatsby",
+      "source_url": "https://www.gutenberg.org/cache/epub/64317/pg64317.txt",
+      "license": "Public domain in the US; distributed under the Project Gutenberg License (gutenberg.org/license). Header/footer stripped for training; see manifest.",
+      "bytes_raw": 306553,
+      "bytes_clean": 280241,
+      "sha256_clean": "b85487b89c4b5f13efc6a59bc97b5c81ec4371768e6c1106b388153fb764f36b",
+      "download_date": "2026-07-07",
+      "filters": [
+        "gutenberg-boilerplate-strip(START/END markers)",
+        "crlf->lf",
+        "strip-produced-by",
+        "utf-8"
+      ]
+    }
+  ]
+}
