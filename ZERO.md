@@ -533,3 +533,25 @@ Stage-2 plan + the pre-registered "filtered-beats-unfiltered at equal tokens"
 experiment are recorded in DATA.md (no tier-2 download yet; >5 GB asks first).
 Human data checkpoints (make talk; blind A/B; 20 everyday questions) are listed
 in STATUS.md; verdicts will be logged here verbatim.
+
+## Appended 2026-07-07 — DAY 4c: CPU-fp64 vs GPU-fp32 TRAINING PARITY (PASS)
+
+zero/day4c.cu trains the IDENTICAL tiny model two ways from identical weights,
+same seed, same per-step data: one path entirely CPU double, the other entirely
+GPU float using the hand-written kernels (gemm with transpose flags, fused
+attention fwd/bwd, masked xent, RMSProp — no cuBLAS/cuDNN). Model: embed(cur,
+prev 2V) → Q,K,V → causal attention → Wout → masked cross-entropy on the day3
+induction task (V=8, L=24, d=32), 400 steps.
+
+Pre-registered tolerance (unchanged): |L_gpu − L_cpu| ≤ 2e-2 over the first
+200 steps AND final losses within 5% relative. MEASURED:
+- step 1 agreement: |Δ| = 3.7e-9 (identical start, as designed).
+- **worst |Δ| over first 200 steps: 3.98e-04** (bar ≤ 2e-2) → PASS.
+- final: cpu 0.736427 vs gpu 0.729525, **rel 0.94%** (bar ≤ 5%) → PASS.
+- Both paths learn identically well (loss 2.08 → 0.74). Divergence grows slowly
+  (fp32 rounding accumulates over independent updates — expected), staying far
+  inside tolerance.
+
+**PARITY PASS → the GPU training path is unlocked** (this was the gate before
+any GPU training). The kernels compose correctly into a full train step. Next:
+Day 5 — BPE tokenizer, assembled transformer, chat REPL, milestone pretrain.
