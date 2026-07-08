@@ -483,3 +483,25 @@ BINDING WORKFLOW (effective now):
 4. STATUS.md names the active branch so a fresh session resumes there.
 5. Sandbox-review blocks cite the `main` merge-commit sha (the verified trunk).
 Queue after this: Day 4b (CUDA kernels) → data refinery → rental prep.
+
+## Appended 2026-07-07 — DAY 4b: hand-written CUDA kernels (MEASURED)
+
+All kernels hand-written fp32 CUDA; no cuBLAS/cuDNN/thrust (purity holds).
+Probes in probes/*.cu; hw.json carries the numbers.
+
+- **Register-blocked SGEMM (the pre-registered bar).** 128×128×8 block tile,
+  8×8 register micro-tile per thread, float4 vectorized loads.
+  **N=2048: 14,302.8 GFLOP/s** (N=4096: 15,803.3). Bar was ≥ 8,190 (3× the
+  2,730 tiled baseline): **HIT** — 1.75× over bar, 5.24× the baseline,
+  ~49% of the card's ~29 TFLOP fp32 peak. Correctness vs naive kernel:
+  bit-identical (maxrel 0.0).
+- **RMSProp update kernel:** vs CPU-fp64, maxrel 2.16e-06 → PASS.
+- **Embedding gather (fwd):** bit-exact (maxabs 0.0) → PASS.
+- **Embedding scatter-add (bwd, atomic):** bit-exact (maxrel 0.0) → PASS.
+- **Fused single-head causal attention fwd+bwd** (scaled dot-product, causal
+  mask, row-softmax, O=P·V; backward dQ/dK/dV), vs CPU-fp64: O 7.58e-05,
+  dQ 4.59e-05, dK 8.59e-05, dV 1.03e-04 — all < 1e-3 fp32 tolerance → PASS.
+
+Verdict: Day 4b bar HIT; every kernel verified against a fp64 reference. These
+compose into the GPU training path for the Day 4c parity proof. bf16/tensor-
+core still deferred (null-with-note in hw.json).

@@ -17,7 +17,7 @@ Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 | 4a | fp32 engine port + dual-precision gradcheck | **done** | 74dc114 |
 | gov | governance: reference.json, verify.sh, branch protection, STATUS, prove-it (verify RED demonstrated) | **done*** | a5511a9 |
 | gov-ci | CI workflow live; GREEN on main; CI-RED demoed; protection binds (red PR merge refused) | **done** | b52ef89 |
-| 4b | hand-written CUDA kernels (matmul ≥3× tiled, fused attn fwd/bwd, optimizer, gather/scatter) + hw.json | todo | — |
+| 4b | CUDA kernels: SGEMM 14303 GFLOP/s (bar 8190 HIT), fused attn fwd/bwd, RMSProp, gather/scatter — all fp64-verified; hw.json updated | **done** | (landing) |
 | 4c | CPU-fp64 vs GPU-fp32 training parity (gate before GPU training) | todo | — |
 | 5d | BPE tokenizer in C (lossless round-trip proof, chars/token) | todo | — |
 | 5e | full transformer LM in ZERO engine (causality + gradcheck on assembled stack) | todo | — |

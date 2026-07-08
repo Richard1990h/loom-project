@@ -61,6 +61,31 @@
     "note": "Hand-written kernels only. Tiled (16x16 shared memory) beats naive by 1.30x. Both are far below the card's fp32 arithmetic peak (~29 TFLOPs) because these are simple kernels with no register blocking / vectorized loads; that headroom is a known future rung, not a defect. Establishes our hand-written baseline."
   },
 
+  "gpu_fp32_matmul_registerblocked": {
+    "probe": "probes/gpu_matmul_fast.cu (hand-written, no cuBLAS): 128x128x8 block tile, 8x8 register micro-tile per thread, float4 vectorized loads",
+    "date": "2026-07-07",
+    "n2048_gflops": 14302.8,
+    "n4096_gflops": 15803.3,
+    "speedup_vs_tiled": 5.24,
+    "correctness_vs_naive_maxrel": 0.0,
+    "prereg_bar_gflops": 8190,
+    "bar_met": true,
+    "note": "Day 4b headline. 14302.8 GFLOP/s at N=2048 = 5.24x the tiled baseline (2730.3) and 1.75x the pre-registered bar of 8190 (3x tiled). ~49% of the card's ~29 TFLOP fp32 peak. Bit-identical to the naive kernel."
+  },
+
+  "gpu_kernels_verified": {
+    "date": "2026-07-07",
+    "note": "Hand-written fp32 CUDA kernels, each checked against a CPU-fp64 reference (fp32 tolerance). No cuBLAS/cuDNN/thrust.",
+    "rmsprop_update_maxrel": 2.16e-06,
+    "embed_gather_maxabs": 0.0,
+    "embed_scatter_add_maxrel": 0.0,
+    "fused_attention_fwd_O_maxrel": 7.58e-05,
+    "fused_attention_bwd_dQ_maxrel": 4.59e-05,
+    "fused_attention_bwd_dK_maxrel": 8.59e-05,
+    "fused_attention_bwd_dV_maxrel": 1.03e-04,
+    "probes": ["probes/gpu_kernels.cu", "probes/gpu_attention.cu"]
+  },
+
   "gpu_bf16_tensorcore": {
     "value": null,
     "note": "DEFERRED, not faked. RTX 4070 (CC 8.9) has 4th-gen tensor cores with bf16/fp16 support, but a correct hand-written WMMA/mma probe is a later rung. Recorded null per standing order: no measurement, no number."
