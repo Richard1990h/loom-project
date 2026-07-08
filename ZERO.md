@@ -394,3 +394,31 @@ The bar is MECHANISM not eloquence: a ~5M model will be barely coherent, and
 the report states exactly how coherent it measured (val loss, %-replies that
 are well-formed and terminate), never how coherent it "felt". >30-min runs:
 ASK first. Any download >5 GB: ASK first (Gutenberg subset will be far under).
+
+## Appended 2026-07-07 — GOVERNANCE RUNG: EXECUTED
+
+Made the project self-enforcing. Artifacts: reference.json (pinned replication
+truth + tolerances), verify.sh + `make verify` (fingerprint → compile+run
+day1/2/3 → check vs reference.json → purity scan → ZERO.md append-only),
+STATUS.md (live queue + machine-continuity), session protocol added to
+CLAUDE.md, and CI workflow (.github/workflows/verify.yml).
+
+- `make verify` on the current tree: **GREEN** — all reference checks pass
+  (day1 7.91e-08/0.1790; day2 gradcheck 8.2e-07, quad 1/691/69078 vs 4/4/4,
+  charLM 86 vs 30; day3 abs 5.24e-11, causality true, RoPE 1.33e-15, induction
+  0.998, baseline 0.290), purity clean, append-only preserved.
+- Branch protection on `main` set via API (HTTP 200): force-pushes forbidden,
+  deletions forbidden, `verify` required; enforce_admins=false so the
+  stateless-worker per-task direct-push flow still works.
+- **PROVE-IT (guardrail actually catches faults).** On scratch branch
+  `prove-fault`, perturbed ONE constant in day2.c (GD optimal step
+  2.0/(1+κ) → 1.0/(1+κ)). `make verify` went **RED**: day2 GD steps became
+  20 / 1354 / 134697 vs pinned 1 / 691 / 69078 → REFERENCE CHECK FAILED,
+  exit nonzero. Fault discarded, branch deleted, tree clean. A guardrail that
+  never caught anything would be decoration; this one caught a one-character
+  change.
+- DEFERRED (needs a `workflow`-scoped GitHub token, current token is `repo`
+  only): pushing .github/workflows/verify.yml and the CI-RED demonstration
+  (push the fault branch, observe the Actions run fail). The workflow file is
+  authored and staged locally; CI activates the moment a workflow-scoped token
+  is provided. Recorded honestly, not faked.
