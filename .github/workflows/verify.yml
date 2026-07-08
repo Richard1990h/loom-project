@@ -1,0 +1,26 @@
+name: verify
+
+# Runs the self-enforcing guardrail on every push and PR. CPU-only
+# (ubuntu-latest). GPU kernel/parity checks print SKIPPED-NO-GPU here and stay
+# covered by on-machine runs + sandbox review — never faked.
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for ZERO.md append-only check)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Toolchain versions
+        run: |
+          gcc --version | head -1
+          python3 --version
+      - name: Run verify.sh
+        run: bash verify.sh
