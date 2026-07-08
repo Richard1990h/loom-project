@@ -66,3 +66,28 @@ Machine (gated, verified this session): RTX 4070 12 GB (12282 MiB, driver
 The GitHub repo `Richard1990h/loom-project` (branch `main`) is authoritative
 for this pure track. A prior improvised wrong-environment attempt is archived
 on the RL branch `claude/loom-sandbox-replication-tyfmkz` — leave it alone.
+
+## SESSION PROTOCOL (governance — binding)
+- **Start of every session:** run `make verify` and read `STATUS.md` (then this
+  file, ZERO.md, HANDOFF.md). If `make verify` is RED, fix that first —
+  **never build on red.**
+- **Sessions are stateless workers.** All durable state lives in the repo
+  (code, ZERO.md, STATUS.md, checkpoints). Nothing important lives only in a
+  session's memory. Commit + push after every completed task with the measured
+  numbers in the message.
+- **Long jobs run as OS processes**, not inside a chat turn: launch under
+  `tmux`/`nohup` writing a `train.log`, checkpoint periodically, and support
+  resume-from-checkpoint. A watchdog script restarts a crashed run from its
+  last checkpoint. Ask the human before any run > 30 min or any download > 5 GB.
+- **Plan changes require an AMENDMENT.** The plan (rules, bars, pre-registered
+  predictions) may change ONLY via an `AMENDMENT:` entry appended to ZERO.md
+  that quotes the human's explicit approval. Silent rule edits or loosened
+  bars are violations. ZERO.md is append-only (verify.sh enforces this against
+  origin/main).
+- **Precedence when instructions conflict:** human > CLAUDE.md > ZERO.md >
+  HANDOFF.md. A conflict is **logged** (as an `AMENDMENT:`/conflict note in
+  ZERO.md), never resolved silently.
+- **Guardrail:** `verify.sh` (via `make verify`) and the `verify` CI workflow
+  check fingerprint, replication vs `reference.json`, purity (no ML/numerics
+  libs in artifact code), and ZERO.md append-only. `reference.json` bounds are
+  never loosened to make a run pass — a red bar is the guardrail working.
