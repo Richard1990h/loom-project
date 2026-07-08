@@ -220,3 +220,73 @@ Testbed B — day1 char-LM (2,078 params), steps to loss ≤ 0.20 (cap 5000):
 Verdict: every pre-registered bar met; no misses to report this rung. The
 optimizer adaptation is real and measured, with the caveat that Testbed A's
 result is the idealised diagonal case. Next rung (Day 3): sequence machinery.
+
+## Appended 2026-07-07 — DAY 3 sequence machinery: DERIVATION + PRE-REGISTRATION
+
+Registered BEFORE building/running zero/day3.c. Predictions locked; hits AND
+misses published against exactly these bars.
+
+**Requirement.** Influence must travel between positions, content-addressed
+and order-aware, without a position ever depending on the future.
+
+**Derivation 1 — the comparison operator (content addressing).**
+Content-addressed means a position chooses what to read by *content*, not by
+fixed offset. So each position emits a query (what it seeks) and a key (what
+it offers); the match is a scalar comparison of the two vectors. The unique
+basis-free bilinear comparison of two vectors is the inner product q·k — no
+preferred axis, cheap, differentiable, maximal when aligned. To turn a row of
+scores into a read distribution (non-negative, sums to 1) we need softmax
+(already derived day1). Raw dot products of d-dim vectors with unit-variance
+entries have variance ∝ d, so they grow like √d and saturate softmax; dividing
+by √d holds scores O(1). Output at i = Σ_j softmax(scores_i)_j · v_j.
+(DECLARED CONVERGENCE: this is scaled dot-product attention. Derived from the
+requirement, kept as re-derivation; not imported.)
+
+**Derivation 2 — causality.** Autoregressive influence must never read the
+future, so before softmax we set score(i,j) = −∞ for j > i. Structural, not
+learned; masked entries get probability 0, hence zero gradient.
+
+**Derivation 3 — the positional scheme (order awareness).**
+Pure content addressing is permutation-invariant (a bag of tokens). We need
+the comparison of positions i and j to depend on their *relative* offset i−j.
+Requirement → the query/key comparison should be a function of (i−j) only.
+Rotating a 2-D sub-vector of q by an angle ∝ (its position) and of k likewise
+makes q·k depend only on the angle difference, i.e. on i−j, because a rotation
+is orthogonal and R(θ_i)ᵀR(θ_j)=R(θ_j−θ_i). Stacking d/2 such 2-D rotations at
+geometrically spaced frequencies ω_k = base^(−2k/d) gives a rich relative
+encoding that extrapolates in length. (DECLARED CONVERGENCE: this is RoPE,
+rotary position embedding. Derived from "comparison must depend on relative
+offset," kept as re-derivation.)
+
+**PROOFS to produce (bit-level, like day1):**
+- GRADCHECK: every new op (transpose, scale, causal-mask, row-softmax, RoPE,
+  masked cross-entropy) analytic-vs-finite-difference max rel err < 1e-6.
+- CAUSALITY, bit-exact: perturbing the input at position p leaves every output
+  row i < p bit-for-bit identical (exact double equality), for several p.
+- RoPE RELATIVE property: for random q,k, score(rope(q,i),rope(k,j)) equals
+  score(rope(q,i+Δ),rope(k,j+Δ)) to < 1e-9 — the comparison sees only i−j.
+
+**MEASUREMENT — the induction task (needs content-addressing + causality).**
+Sequence of L random tokens over V symbols. Each position i is fed (token_i,
+token_{i−1}) as a 2V one-hot (the day1 two-char trick, so a single head has a
+"previous-token" key available). Target_i = the token that FOLLOWED the most
+recent earlier occurrence of token_i (classic induction head); loss/accuracy
+scored only at positions where such an occurrence exists. Solvable by one
+causal head: query on current token, key on previous token, value on current
+token → attend to the position right after the prior match, read its value.
+Optimizer: OURS (day2 RMSProp). Config: V=8, L=24, d=32, 1 head, base=10000,
+minibatch 16 fresh sequences/step, evaluate on fresh sequences (measures
+learning, not memorisation).
+
+**PRE-REGISTERED BARS:**
+- P1: the attention model reaches ≥ 90% induction accuracy on fresh eval
+  sequences within 4,000 steps.
+- P2 (content addressing matters): a uniform-causal-attention baseline
+  (P_ij = 1/(i+1) for j ≤ i; same value/output path, no query/key selection)
+  stays ≤ 40% accuracy.
+- KILL: if attention accuracy ≤ baseline accuracy, content addressing bought
+  nothing — declare failure, keep the number.
+- RoPE ablation (exploratory, no locked number): attention with RoPE vs with
+  no positional signal on this task. Prediction: roughly neutral here (the
+  task is content-driven), reported honestly either way; RoPE's load-bearing
+  claim is the relative-offset PROOF above, not this task's accuracy.
