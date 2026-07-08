@@ -4,6 +4,7 @@ zero/day2
 zero/day3
 zero/day4
 zero/day4c
+zero/bpe
 zero/*.o
 *.o
 *.out

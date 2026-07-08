@@ -555,3 +555,23 @@ Pre-registered tolerance (unchanged): |L_gpu − L_cpu| ≤ 2e-2 over the first
 **PARITY PASS → the GPU training path is unlocked** (this was the gate before
 any GPU training). The kernels compose correctly into a full train step. Next:
 Day 5 — BPE tokenizer, assembled transformer, chat REPL, milestone pretrain.
+
+## Appended 2026-07-07 — DAY 5d: BPE tokenizer (ARTIFACT), lossless (PASS)
+
+zero/bpe.c — pure C, no libraries. DERIVATION: the model needs units denser
+than raw bytes but a small vocab and exact invertibility. Start from bytes (so
+anything round-trips), then iteratively fuse the most frequent adjacent pair
+into a new unit — greedy compression of the corpus's own statistics. (DECLARED
+CONVERGENCE: this is Byte-Pair Encoding. Derived from the compression + lossless
+requirement; base = bytes ⇒ invertible by construction.)
+
+Trained on the stage-1 corpus (concatenated data/clean, 5,956,264 bytes),
+vocab 2048 (1792 merges learned). tokenizer.bin = 14,348 bytes (tracked; format
+documented in bpe.c header).
+- **PROOF — lossless round-trip on held-out (last 20%, 1,191,253 bytes):
+  decode(encode(x)) == x byte-exact, 0 mismatches → PASS (100%).**
+- **chars-per-token: 3.35 on the full corpus, 3.322 on held-out.** (This is the
+  chars/token the Data Refinery deferred to Day 5d.)
+- Corpus tokenizes to 1,779,479 tokens. For a 2–8M model that is a small token
+  budget (heavily undertrained vs compute-optimal); consistent with the
+  pre-registered "mechanism, not eloquence" milestone bar.
