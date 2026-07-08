@@ -26,7 +26,9 @@ Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 | 5e | full transformer (pre-LN attn+RoPE, GELU FFN, residual, tied head): gradcheck 1.9e-8 + bit-exact causality PASS | done | 3c547d8 |
 | gpu | GPU transformer trainer (gpt.cu): gate PASS — gradcheck 2.4e-6, loss parity 2.7e-7 | done | bd78dbd |
 | 5f | checkpoint format (bit-exact round-trip), temp+top-k sampling (derived), chat REPL / make talk, kill-resume verified | **done** | (landing) |
-| 5g | milestone pretrain RUNNING (3.68M params, 20k steps): beating bigram by step 1000 (val 5.35 vs 5.56). Awaiting final. | in_progress | — |
+| 5g | milestone pretrain DONE (3.68M, 20k steps): final val CE 4.60 vs bigram 5.56 → gap 0.96 (bar ≥0.3 MET) | **done** | (landing) |
+| 5h | fine-tune on 60 placeholder dialogues (CE 8.51→0.036); first conversation: chat mechanism works, low coherence (as pre-registered) | **done** | (landing) |
+| **HUMAN** | **`make talk` (chat REPL) + `make abtest` (blind A/B) — awaiting the human. Verdict logged verbatim in ZERO.md.** | **BLOCKED (human)** | — |
 | 5f | sampling + top-k + chat REPL binary + checkpoint format | todo | — |
 | 5g | milestone pretrain (2–8M) + finetune on self-authored dialogues | todo | — |
 | 5h | DAY5-FIRST-CONVERSATION report (raw transcript, verbatim) | todo | — |
