@@ -13,6 +13,9 @@ probes/cpu_flops
 probes/gpu_devquery
 probes/gpu_bandwidth
 probes/gpu_matmul
+probes/gpu_matmul_fast
+probes/gpu_kernels
+probes/gpu_attention
 
 # Disposable helpers
 _probe_*.sh
