@@ -6,6 +6,7 @@ zero/day4
 zero/day4c
 zero/bpe
 zero/day5
+zero/gpt
 zero/*.o
 *.o
 *.out

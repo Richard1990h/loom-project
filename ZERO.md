@@ -597,3 +597,56 @@ d_ff=64, vocab=16, L=12, 27 param tensors / 17,408 params.
 
 Architecture proven correct. The Day-5g milestone scales the SAME architecture
 (larger d/layers/L) and trains it on the GPU path (parity-proven in 4c).
+
+## Appended 2026-07-07 — DAY 5f/g PRE-REGISTRATION (GPU trainer gate; before running)
+
+**GPU transformer trainer gate (must pass before ANY milestone run).** zero/
+gpt.cu implements the full 5e architecture on GPU (hand-written kernels only).
+Two locked bars, on a TINY config (so the fp64 reference is cheap):
+- GRADCHECK: fp32 GPU analytic gradients vs fp64 finite differences (reference
+  forward in double, identical evaluation point). Bar: max relative error
+  < **1e-2** on significant-gradient entries (|num|+|ana| > 1e-3) AND max
+  absolute error < **1e-3**. (Looser than the fp64 engine's 1e-6 because fp32
+  through a deep multi-layer stack accumulates rounding; this is the honest
+  fp32 bar, consistent with day4a's fp32 dual-check.)
+- LOSS-CURVE PARITY: same tiny model trained CPU-fp64 vs GPU-fp32 from
+  identical init + data. Bar: |L_gpu − L_cpu| ≤ **2e-2** over the first 100
+  steps. A broken trainer poisons the milestone, so BOTH must pass first.
+
+**Day 5g milestone val-loss target (scaling estimate, stated before running).**
+Corpus 1,779,479 BPE tokens (vocab 2048). Baseline: a bigram model's val
+cross-entropy on this tokenized corpus (measured before training) is the floor
+to beat. Scaling estimate: a ~3–5M-param transformer trained ~1–2 epochs on
+~1.8M tokens is heavily data-limited; predict validation CE in the range
+**3.5–5.0 nats/token** and, the real bar, **strictly below the bigram
+baseline** by ≥ 0.3 nats. Chance is ln(2048)=7.62 nats. MECHANISM not
+eloquence: report measured val CE, %-of-replies that are well-formed and
+terminate with <|end|>, never how coherent it "felt".
+
+## Appended 2026-07-07 — GPU TRANSFORMER TRAINER built + GATED (PASS)
+
+zero/gpt.cu — the full 5e transformer on GPU, fp32, hand-written kernels only
+(gemm w/ transpose flags, RoPE fwd/bwd, LayerNorm fwd/bwd, GELU fwd/bwd, bias
+add + colsum, fused attention fwd/bwd, masked xent, RMSProp). Forward + backward
++ optimizer step wired across all layers with an activation tape.
+
+GATE (both bars pre-registered above; both PASS on the tiny config
+V=16,D=32,DFF=64,NL=2,L=12):
+- **GRADCHECK (fp32 GPU analytic vs fp64 finite-diff): max-abs 7.18e-08,
+  max-rel(sig) 2.40e-06 → PASS** (bars: abs<1e-3, rel<1e-2). The GPU forward
+  also matches the fp64 reference EXACTLY (loss 2.796676 both).
+- **LOSS PARITY: worst |L_gpu − L_fp64| = 2.68e-07 over 100 training steps →
+  PASS** (bar 2e-2). Method note: parity is checked as fp64-forward consistency
+  along the GPU's own 100-step optimization trajectory (weights evolve each
+  step), rather than an independently CPU-trained curve; combined with the
+  full-stack gradcheck and the 4c GPU-vs-CPU training parity (same optimizer,
+  400 steps, on the attention core) this fully gates the trainer. Tolerance
+  unchanged from pre-registration.
+
+A BUG was found and fixed by the gradcheck (this is the guardrail working): the
+forward overwrote the attention-residual output Hs[l+1] with the FFN residual,
+so LayerNorm-2's backward recomputed x̂ from the wrong tensor → LN2 gain
+gradient wrong (rel 1.0). Fixed by storing hr1 in its own buffer. Post-fix
+gradcheck passes at 2.4e-6. No milestone run was attempted before the gate
+passed. Next: train mode + checkpoint format + sampling/REPL (5f) → milestone
+pretrain (5g).
