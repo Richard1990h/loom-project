@@ -24,7 +24,9 @@ Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 | 5d | BPE tokenizer: lossless round-trip 100% (0 mismatches/1.19MB held-out), vocab 2048, 3.32 chars/token | **done** | (landing) |
 | 5d | (see above) | done | c7af520 |
 | 5e | full transformer (pre-LN attn+RoPE, GELU FFN, residual, tied head): gradcheck 1.9e-8 + bit-exact causality PASS | done | 3c547d8 |
-| gpu | GPU transformer trainer (gpt.cu): gate PASS — gradcheck 2.4e-6, loss parity 2.7e-7. Ready for milestone | **done** | (landing) |
+| gpu | GPU transformer trainer (gpt.cu): gate PASS — gradcheck 2.4e-6, loss parity 2.7e-7 | done | bd78dbd |
+| 5f | checkpoint format (bit-exact round-trip), temp+top-k sampling (derived), chat REPL / make talk, kill-resume verified | **done** | (landing) |
+| 5g | milestone pretrain RUNNING (3.68M params, 20k steps): beating bigram by step 1000 (val 5.35 vs 5.56). Awaiting final. | in_progress | — |
 | 5f | sampling + top-k + chat REPL binary + checkpoint format | todo | — |
 | 5g | milestone pretrain (2–8M) + finetune on self-authored dialogues | todo | — |
 | 5h | DAY5-FIRST-CONVERSATION report (raw transcript, verbatim) | todo | — |

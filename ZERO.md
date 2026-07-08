@@ -650,3 +650,37 @@ gradient wrong (rel 1.0). Fixed by storing hr1 in its own buffer. Post-fix
 gradcheck passes at 2.4e-6. No milestone run was attempted before the gate
 passed. Next: train mode + checkpoint format + sampling/REPL (5f) → milestone
 pretrain (5g).
+
+## Appended 2026-07-08 — DAY 5f: checkpoint format, sampling, chat REPL
+
+**Checkpoint format** (documented in gpt.cu header): "GPT0" magic, version,
+config (V,D,DFF,NL,L), int64 step, then all parameter tensors in registration
+order, then the RMSProp v-state. Proven with `gpt ckpttest`: save→corrupt→load
+round-trips **BIT-EXACT** (34,816 floats params+optv, step preserved). Written
+before any training so a multi-hour run can't lose itself; kill-and-resume also
+verified live (`RESUMED from step 20` → continued to 40).
+
+**Sampling — derived from day1's own observation.** ZERO.md day-one honesty
+note recorded that GREEDY (argmax) decoding cycles ("the weaves weaves…")
+because at genuinely ambiguous contexts argmax always takes the majority branch,
+turning ambiguity into loops. Requirement therefore: at each step, SAMPLE from
+the model's distribution instead of taking the mode, so ambiguity is expressed
+as variety rather than a loop. Two controls fall out: (i) TEMPERATURE T scales
+logits (z/T) before softmax — T→0 recovers the degenerate argmax, T→1 the model's
+own distribution, T>1 flattens; (ii) TOP-K truncates to the k most probable
+tokens before renormalising, cutting the long improbable tail that makes small
+models wander. (Declared convergence: temperature + top-k sampling; derived from
+the day1 greedy-loop degeneracy, not imported.) Implemented in gpt.cu
+sample_next().
+
+**Chat REPL** (`gpt talk` / `make talk`): loads a checkpoint + the tokenizer,
+formats turns as literal text `<|user|>\n…\n<|assistant|>\n`, generates with
+temp+top-k until the literal string `<|end|>` appears (or a cap). Chat tokens
+are ordinary BPE-encoded text — NO special vocab is added, so the pretrained
+2048-vocab model is used unchanged and fine-tuning teaches the format.
+
+Milestone pretrain (5g) launched: 3.68M-param transformer (V=2048,D=256,
+DFF=1024,NL=4,L=128,B=8, lr 3e-4 RMSProp), 20,000 steps on 1.78M tokens, GPU,
+under scripts/watchdog.sh (auto-restart-from-checkpoint + off-WSL backup).
+Early signal: train CE 6.50→5.51 by step 600 (bigram baseline 5.5625). Results
++ val-vs-bar to be recorded here when the run completes.

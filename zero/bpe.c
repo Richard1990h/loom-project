@@ -114,9 +114,19 @@ static void proof(const char* corpus,const char* binf){
     free(raw);free(tk);free(back);free(mg);
 }
 
+/* encode a corpus file to a uint16 token stream (vocab < 65536). */
+static void encode_file(const char* corpus,const char* binf,const char* out){
+    int vocab; Pair* mg=malloc(sizeof(Pair)*VMAX); int nm=load(binf,&vocab,mg);
+    long n; uint8_t* raw=read_file(corpus,&n);
+    int* tk=malloc((size_t)n*sizeof(int)); long ntok=encode(raw,n,nm,mg,tk);
+    FILE* f=fopen(out,"wb"); for(long i=0;i<ntok;i++){ unsigned short u=(unsigned short)tk[i]; fwrite(&u,2,1,f); } fclose(f);
+    printf("encoded %ld bytes -> %ld tokens (%.3f chars/token), wrote %s\n",n,ntok,(double)n/ntok,out);
+    free(raw);free(tk);free(mg);
+}
 int main(int argc,char** argv){
     if(argc>=5 && !strcmp(argv[1],"train")){ train(argv[2],atoi(argv[3]),argv[4]); return 0; }
     if(argc>=4 && !strcmp(argv[1],"proof")){ proof(argv[2],argv[3]); return 0; }
-    fprintf(stderr,"usage: bpe train <corpus> <vocab> <out.bin> | bpe proof <corpus> <out.bin>\n");
+    if(argc>=5 && !strcmp(argv[1],"encode")){ encode_file(argv[2],argv[3],argv[4]); return 0; }
+    fprintf(stderr,"usage: bpe train <corpus> <vocab> <out.bin> | bpe proof <corpus> <out.bin> | bpe encode <corpus> <tok.bin> <out.u16>\n");
     return 2;
 }
