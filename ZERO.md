@@ -336,3 +336,61 @@ causality + RoPE relative property), and measured. All locked bars met; one
 honest exploratory miss (position matters more than predicted). Next rung
 (Day 4): the byte discipline — float32 cache-aware kernels, then the CUDA
 port, all cited against hw.json.
+
+## Appended 2026-07-07 — DAYS 4-5: PRE-REGISTRATION (before any run)
+
+Locked before building/measuring. Misses published like everything else.
+
+**Day 4a — fp32 engine port.** The engine is parameterized by precision
+(REAL = float | double) in one header, generating prefixed f32_/f64_ symbol
+sets so the SAME model/data can be run in both in one program.
+- BAR (fp64 build): gradcheck (fp64 analytic vs fp64 central finite diff) max
+  rel err < 1e-6 on significant-gradient entries — unchanged from before.
+- BAR (fp32 build): gradcheck computed as **fp32 analytic vs fp64 finite
+  differences** (the f64 build is the reference, params copied f32→f64 so the
+  evaluation point is identical) — max rel err < **1e-3** on significant
+  entries, and max ABSOLUTE err reported. Cross-check exercises the full
+  attention stack (matmul, addb, transpose, scale, causal-mask, row-softmax,
+  RoPE, masked cross-entropy).
+
+**Day 4b — hand-written CUDA kernels (no cuBLAS/cuDNN/thrust ever).** Targets:
+- fp32 matmul with register blocking + vectorized (float4) loads: **≥ 3× the
+  measured tiled baseline of 2730 GFLOP/s → ≥ 8190 GFLOP/s** at N=2048.
+- fused attention forward and backward (single kernel families, hand-written).
+- optimizer update (our RMSProp) as a kernel.
+- embedding gather (forward) / scatter-add (backward) kernels.
+- Correctness bar: each GPU kernel matches the CPU-fp64 reference within fp32
+  tolerance (see 4c). hw.json updated with measured GFLOP/s.
+
+**Day 4c — CPU-fp64 vs GPU-fp32 training parity (gate before any GPU
+training).** Identical tiny model, same seed and data order, trained both
+paths. TOLERANCE (stated before running): per-step training loss agrees with
+|L_gpu_fp32 − L_cpu_fp64| ≤ **2e-2** for the first 200 steps AND the final-step
+losses agree to ≤ **5% relative**. If parity fails, NO GPU training proceeds —
+diagnose first.
+
+**Day 5d — BPE tokenizer.** Derive byte-pair merging (greedy most-frequent
+adjacent pair, iterated). BARS: lossless round-trip decode(encode(x)) == x on
+**100%** of held-out text (byte-exact); report measured chars/token. (Declared
+convergence with BPE — derived from the compression requirement, not imported.)
+
+**Day 5e — full transformer.** Config-driven: embeddings, N×(causal attention
++ FFN + layernorm + residual), tied output head. BARS: bit-exact causality on
+the assembled stack; gradcheck (fp64 <1e-6, fp32 <1e-3) on significant entries.
+
+**Day 5f — sampling + chat REPL.** Temperature + top-k sampling derived from
+the day1 greedy-loop degeneracy observation (logged). Chat tokens
+<|user|>,<|assistant|>,<|end|>. C REPL loads a checkpoint (our documented
+binary format) and holds a live conversation.
+
+**Day 5g/h — milestone first conversation.** Public-domain corpus (Gutenberg),
+pretrain a 2–8M-param model on the GPU path, fine-tune on 50–200 self-authored
+dialogue examples. PRE-REGISTERED: (i) pretrain validation loss target from a
+stated scaling estimate — **for a ~5M-param model on ~5–20M tokens of English,
+target val cross-entropy ≤ 1.8 nats/token (≈ 2.6 bits/char-equiv is looser;
+the honest bar is "beats a bigram baseline measured on the same data")**;
+(ii) the REPL must emit in-format assistant turns that TERMINATE with <|end|>.
+The bar is MECHANISM not eloquence: a ~5M model will be barely coherent, and
+the report states exactly how coherent it measured (val loss, %-replies that
+are well-formed and terminate), never how coherent it "felt". >30-min runs:
+ASK first. Any download >5 GB: ASK first (Gutenberg subset will be far under).
