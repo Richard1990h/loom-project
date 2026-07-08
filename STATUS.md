@@ -10,7 +10,7 @@ Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 |---|------|-------|--------|
 | 4a | fp32 engine port + dual-precision gradcheck | **done** | 74dc114 |
 | gov | governance: reference.json, verify.sh, branch protection, STATUS, prove-it (verify RED demonstrated) | **done*** | a5511a9 |
-| gov-ci | push CI workflow + demonstrate CI RED — BLOCKED: needs a `workflow`-scoped GitHub token (current token is `repo` only). verify.yml authored + staged locally | **blocked** | — |
+| gov-ci | CI workflow live; GREEN on main; CI-RED demoed; protection binds (red PR merge refused) | **done** | b52ef89 |
 | 4b | hand-written CUDA kernels (matmul ≥3× tiled, fused attn fwd/bwd, optimizer, gather/scatter) + hw.json | todo | — |
 | 4c | CPU-fp64 vs GPU-fp32 training parity (gate before GPU training) | todo | — |
 | 5d | BPE tokenizer in C (lossless round-trip proof, chars/token) | todo | — |
