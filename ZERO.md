@@ -505,3 +505,31 @@ Probes in probes/*.cu; hw.json carries the numbers.
 Verdict: Day 4b bar HIT; every kernel verified against a fp64 reference. These
 compose into the GPU training path for the Day 4c parity proof. bf16/tensor-
 core still deferred (null-with-note in hw.json).
+
+## Appended 2026-07-07 — DATA REFINERY: stage-1 corpus ONLINE
+
+Provenance discipline (DATA.md): every doc in data/manifest.json carries source
+URL, license, raw+clean bytes, sha256 of cleaned text, download date, filters.
+data/raw + data/clean are gitignored (bytes not tracked); the manifest is the
+tracked, reproducible record. Builder: data/build_corpus.py (instrument, Python
+stdlib only — no numpy/pandas/ML libs).
+
+Stage-1 (public-domain Gutenberg, simple/children's-leaning), MEASURED:
+- **14 documents, 5,956,264 clean bytes (5.68 MiB)** after Gutenberg-boilerplate
+  strip (START/END markers), CRLF→LF, transcriber-block removal, exact sha256
+  dedup. Titles: Alice in Wonderland, Through the Looking-Glass, Wizard of Oz,
+  Black Beauty, Wind in the Willows, Anne of Green Gables, Grimms' Fairy Tales,
+  Peter Pan, Little Women, Treasure Island, The Happy Prince, Pride and
+  Prejudice, Emma, The Great Gatsby.
+- HONEST MISS: 5 of 19 curated IDs (Tom Sawyer, Huck Finn, Secret Garden, A
+  Little Princess, The Jungle Book) failed on transient "Network is unreachable"
+  errors mid-download and were skipped, not faked. 5.68 MiB is ample for the
+  Day-5 milestone (a 2–8M model); the 5 can be re-fetched later by re-running
+  the builder (idempotent).
+- chars-per-token: DEFERRED to Day 5d (needs the tokenizer); will be reported
+  against this exact corpus.
+
+Stage-2 plan + the pre-registered "filtered-beats-unfiltered at equal tokens"
+experiment are recorded in DATA.md (no tier-2 download yet; >5 GB asks first).
+Human data checkpoints (make talk; blind A/B; 20 everyday questions) are listed
+in STATUS.md; verdicts will be logged here verbatim.
