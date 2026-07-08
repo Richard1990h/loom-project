@@ -22,7 +22,8 @@ Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 | 4c | CPU-fp64 vs GPU-fp32 parity PASS (worst200 3.98e-4, final rel 0.94%); GPU training unlocked | **done** | (landing) |
 | 4c | (see above) | done | ec5aea9 |
 | 5d | BPE tokenizer: lossless round-trip 100% (0 mismatches/1.19MB held-out), vocab 2048, 3.32 chars/token | **done** | (landing) |
-| 5e | full transformer LM in ZERO engine (causality + gradcheck on assembled stack) | todo | — |
+| 5d | (see above) | done | c7af520 |
+| 5e | full transformer (pre-LN attn+RoPE, GELU FFN, residual, tied head): gradcheck 1.9e-8 + bit-exact causality PASS | **done** | (landing) |
 | 5f | sampling + top-k + chat REPL binary + checkpoint format | todo | — |
 | 5g | milestone pretrain (2–8M) + finetune on self-authored dialogues | todo | — |
 | 5h | DAY5-FIRST-CONVERSATION report (raw transcript, verbatim) | todo | — |
