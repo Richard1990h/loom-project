@@ -3,6 +3,7 @@ zero/day1
 zero/day2
 zero/day3
 zero/*.o
+*.o
 *.out
 a.out
 # hand-written probe executables (source .c/.cu is tracked; binaries are not)
@@ -20,6 +21,7 @@ _probe_*.sh
 .env.*
 *.env
 *token*
+*key*
 *secret*
 *credential*
 credentials

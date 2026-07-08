@@ -1,5 +1,18 @@
 # HANDOFF — brief for the on-site Claude (Claude Code, user's desktop)
 
+> **SUPERSEDED IN PART (2026-07-07).** This file is now a HISTORICAL brief.
+> The canonical, self-briefing plan is **CLAUDE.md** (read it first), then
+> **ZERO.md**, then this file. Key changes since this was written:
+> (1) The `loom/` PyTorch prototype is RETIRED and archived as
+> `archive-track1-torch/` — its `RESULTS.md`/`*.json` remain valid historical
+> records only; where this file says "loom/…", read "archive-track1-torch/…".
+> (2) PURITY DECISION: no PyTorch/ML/numerics libraries ever; nvcc + CUDA
+> runtime admitted, GPU libraries (cuBLAS/cuDNN/thrust) forbidden, kernels
+> hand-written. (3) Environment is native Windows driven through WSL2 Ubuntu.
+> (4) PHASE 0 (PURE) is complete: engine replicated, hw.json measured, Day-2
+> optimizer built+benchmarked, Day-3 sequence machinery built+proven+measured.
+> See ZERO.md for the pre-registrations and measured results.
+
 You are joining a from-scratch language-model project mid-flight. Read this
 file, then ZERO.md, then loom/RESULTS.md, before executing anything.
 
