@@ -422,3 +422,26 @@ CLAUDE.md, and CI workflow (.github/workflows/verify.yml).
   (push the fault branch, observe the Actions run fail). The workflow file is
   authored and staged locally; CI activates the moment a workflow-scoped token
   is provided. Recorded honestly, not faked.
+
+## Appended 2026-07-07 — GOVERNANCE gov-ci CLOSED OUT (with an honest incident)
+
+Re-authenticated via OAuth device flow (no pasted token); the granted token
+carries `repo, workflow`. Then:
+- CI workflow `.github/workflows/verify.yml` pushed to main; the `verify` job
+  ran GREEN on ubuntu-latest — run 28910272830, conclusion success.
+- CI-RED demonstrated: pushed branch `prove-ci-fault` with the one-constant
+  day2 fault; the Actions run concluded **failure** (run 28910535567).
+
+**INCIDENT (logged, not hidden).** First attempt to prove "a red PR is
+blocked" set `enforce_admins:false`. Under that setting an ADMIN can bypass
+required checks — and I did: my API merge of the red PR #1 SUCCEEDED and put
+the faulty day2.c on main, turning main RED. I caught it immediately, reverted
+(restored day2 GD step 2.0/(1+κ), `make verify` GREEN, commit 22e07df), then
+FIXED the config: `enforce_admins:true`. Re-ran the test — merging red PR #2
+was then **refused**: GitHub returned `Required status check "verify" is
+failing.` Cleanup: both fault PRs closed, both fault branches deleted, main
+GREEN. Lesson: `enforce_admins:false` is a real bypass; protection only truly
+binds with `enforce_admins:true`. Direct pushes to main still work because no
+"require pull request" rule is set (verified by this very commit landing).
+Branch protection final state: force-push off, deletion off, `verify` required,
+enforce_admins ON.
