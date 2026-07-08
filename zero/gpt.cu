@@ -434,6 +434,28 @@ int main(int argc,char**argv){
         save_ckpt(ckpt,steps);
         return 0;
     }
+    if(argc>=6 && !strcmp(argv[1],"finetune")){
+        const char*dtok=argv[2]; const char*base=argv[3]; const char*out=argv[4]; long steps=atol(argv[5]);
+        V=2048;D=256;DFF=1024;NL=4;L=128;SCALE=1.f/sqrtf((float)D); int B=8; float lr=1e-4f;
+        seed(999); alloc_model(); load_ckpt(base,0); for(int i=0;i<NPT;i++)Z(PL[i].v,PL[i].n);   /* fresh optimizer */
+        FILE*tf=fopen(dtok,"rb"); if(!tf){printf("no dialogue tok %s\n",dtok);return 1;} fseek(tf,0,SEEK_END); long fb=ftell(tf); fseek(tf,0,SEEK_SET);
+        long NT=fb/2; unsigned short*u=(unsigned short*)malloc(fb); if(fread(u,2,NT,tf)!=(size_t)NT){printf("read fail\n");return 1;} fclose(tf);
+        int*toks=(int*)malloc(NT*sizeof(int)); for(long i=0;i<NT;i++)toks[i]=u[i]; free(u);
+        printf("finetune: %ld dialogue tokens, base %s, lr %.0e, %ld steps\n",NT,base,lr,steps);
+        if(NT<L+2){ printf("dialogue too short\n"); return 1; }
+        float*Xoh=(float*)malloc((size_t)L*V*4); float*dX=dm(L*V); int tg[512],mask[512];
+        auto evalft=[&](int ns)->double{ double s=0; for(int q=0;q<ns;q++){ long p=(long)(urand()*(NT-L-1)); if(p<0)p=0; memset(Xoh,0,(size_t)L*V*4); int na=0; for(int i=0;i<L;i++){ Xoh[i*V+toks[p+i]]=1.f; tg[i]=toks[p+i+1]; mask[i]=1; na++; } CK(cudaMemcpy(dX,Xoh,(size_t)L*V*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dtg,tg,L*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dmask,mask,L*4,cudaMemcpyHostToDevice)); s+=forward(dX,dtg,dmask,na); } return s/ns; };
+        double before=evalft(64); printf("dialogue loss BEFORE finetune: %.4f\n",before);
+        double ema=0;
+        for(long step=1; step<=steps; step++){ zero_grads(); double tl=0;
+            for(int b=0;b<B;b++){ long p=(long)(urand()*(NT-L-1)); if(p<0)p=0; memset(Xoh,0,(size_t)L*V*4); int na=0; for(int i=0;i<L;i++){ Xoh[i*V+toks[p+i]]=1.f; tg[i]=toks[p+i+1]; mask[i]=1; na++; } CK(cudaMemcpy(dX,Xoh,(size_t)L*V*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dtg,tg,L*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dmask,mask,L*4,cudaMemcpyHostToDevice)); tl+=forward(dX,dtg,dmask,na); backward(dX); }
+            opt_step(lr); CK(cudaDeviceSynchronize()); tl/=B; ema=ema==0?tl:0.98*ema+0.02*tl;
+            if(step%100==0){ printf("ft step %ld/%ld  loss %.4f (ema %.4f)\n",step,steps,tl,ema); fflush(stdout); } }
+        double after=evalft(256); printf("\ndialogue loss AFTER finetune: %.4f (before %.4f)\n",after,before);
+        printf("JSON {\"dialogue_loss_before\":%.4f,\"dialogue_loss_after\":%.4f}\n",before,after);
+        save_ckpt(out,steps); printf("saved chat-tuned checkpoint: %s\n",out);
+        return 0;
+    }
     if(argc>=4 && !strcmp(argv[1],"talk")){
         const char*ckpt=argv[2]; const char*tokf=argv[3];
         float temp=argc>=5?atof(argv[4]):0.8f; int topk=argc>=6?atoi(argv[5]):40;

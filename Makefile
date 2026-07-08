@@ -28,10 +28,17 @@ day4:
 gpt:
 	$(NVCC) $(NVFLAGS) -o zero/gpt zero/gpt.cu
 	$(CC) $(CFLAGS) -o zero/bpe zero/bpe.c
-# `make talk` — the human's live chat REPL (loads the latest checkpoint).
+# `make talk` — the human's live chat REPL (chat-tuned model).
 talk: gpt
-	@echo "loom chat REPL — type a message, Ctrl-D to quit."
+	@echo "loom chat REPL (chat-tuned) — type a message, Ctrl-D to quit."
+	./zero/gpt talk runs/latest/chat.bin data/tokenizer.bin 0.8 40
+# `make talk-base` — the base (pretrained, not chat-tuned) model, for comparison.
+talk-base: gpt
+	@echo "loom REPL (base pretrained) — type a message, Ctrl-D to quit."
 	./zero/gpt talk runs/latest/ckpt.bin data/tokenizer.bin 0.8 40
+# `make abtest` — blind A/B (base vs chat-tuned) on 10 fixed prompts.
+abtest: gpt
+	@bash scripts/ab_test.sh
 
 clean:
 	rm -f zero/day1 zero/day2 zero/day3 zero/day4 zero/day4c zero/day5 zero/gpt zero/bpe zero/*.o

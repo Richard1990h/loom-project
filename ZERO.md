@@ -684,3 +684,40 @@ DFF=1024,NL=4,L=128,B=8, lr 3e-4 RMSProp), 20,000 steps on 1.78M tokens, GPU,
 under scripts/watchdog.sh (auto-restart-from-checkpoint + off-WSL backup).
 Early signal: train CE 6.50→5.51 by step 600 (bigram baseline 5.5625). Results
 + val-vs-bar to be recorded here when the run completes.
+
+## Appended 2026-07-08 — DAY 5g/h: MILESTONE — first conversation (MECHANISM)
+
+**Pretrain result (20,000 steps completed).** Pre-registered bar: beat the
+bigram baseline val CE by ≥ 0.3 nats. Measured val CE trajectory (chance =
+ln 2048 = 7.62; bigram baseline = 5.5625):
+  1k 5.354 | 2k 4.923 | 3k 4.749 | 5k 4.535 | 8k 4.427 | 12k **4.380 (best)**
+  | 16k 4.448 | 20k 4.507 ; FINAL val CE **4.6028**.
+**BAR MET — final gap 0.96 nats (best gap 1.18 at step 12k).** Healthy learning
+then a mild plateau/overfit after ~12k (≈13 epochs on 1.6M train tokens), as
+expected at this data:param ratio. Honest note: the FINAL checkpoint (step 20k,
+val 4.60) is slightly worse than the best (step 12k, val 4.38); both clear the
+bar. The saved ckpt is the final one.
+
+**Fine-tune (placeholder set).** 60 labeled generic dialogues
+(dialogues/placeholder.txt), 2,527 tokens, 1,000 steps @ lr 1e-4 from the
+pretrained ckpt. Dialogue CE **8.51 → 0.036** — the model memorised the chat
+format + replies (expected at 60 examples / 3.68M params). Chat ckpt saved.
+
+**FIRST CONVERSATION — measured, verbatim (temp 0.7, top-k 40).**
+- "Hello" → "Hi there! How can I help you today?" — EXACT, cleanly terminated.
+- "Tell me a joke" → "A star is a faraway sun that shines in the night." (wrong
+  memorised reply); "What is a dog?" → "Grass is green." (wrong); novel prompts
+  ("mountain","ocean") → "!" (no generalisation).
+- MEASURED (10 prompts): 10/10 produced a well-formed assistant turn in the
+  learned chat voice; ~1/2 terminated cleanly at <|end|>, the rest over-ran into
+  a hallucinated extra turn; content accuracy LOW — frequent mis-retrieval of
+  the wrong memorised reply, no generalisation to unseen prompts.
+- VERDICT (mechanism, not eloquence): the END-TO-END CHAT PATH WORKS — BPE →
+  hand-written GPU transformer → temp/top-k sampling → <|end|>-aware detokenise,
+  with a learned <|user|>/<|assistant|> turn structure. Coherence and accuracy
+  are LOW, exactly as pre-registered for a 3.68M model on 1.6M tokens + 60
+  placeholder dialogues. Real in-voice dialogues + a larger pretrain are the
+  deferred next step (human's Path-2 choice; logged in the amendment thread).
+
+The human `make talk` checkpoint + blind A/B (base vs chat-tuned, 10 prompts)
+is next; the human's verdict will be logged here VERBATIM.
