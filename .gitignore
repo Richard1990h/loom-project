@@ -3,6 +3,7 @@ zero/day1
 zero/day2
 zero/day3
 zero/day4
+zero/day4c
 zero/*.o
 *.o
 *.out
