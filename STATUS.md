@@ -3,6 +3,12 @@
 **Start every session:** run `make verify` (must be GREEN) and read this file +
 CLAUDE.md + ZERO.md. Never build on red. State lives in the repo, not in memory.
 
+**ACTIVE BRANCH: `work`** — resume here, not on `main`. Landing workflow (see
+ZERO.md AMENDMENT 2026-07-07): develop on `work`, push it to origin after every
+task; `main` is updated ONLY via a CI-gated PR at each rung boundary
+(enforce_admins ON — direct pushes to main are rejected by design). Sandbox
+review cites the `main` merge-commit sha.
+
 Last updated: 2026-07-07. Repo: https://github.com/Richard1990h/loom-project
 
 ## Task queue (Days 4-5 as specified)

@@ -445,3 +445,41 @@ binds with `enforce_admins:true`. Direct pushes to main still work because no
 "require pull request" rule is set (verified by this very commit landing).
 Branch protection final state: force-push off, deletion off, `verify` required,
 enforce_admins ON.
+
+## AMENDMENT 2026-07-07 — main-landing workflow (human-approved)
+
+Correction to the note just above (ZERO.md is append-only, so the error stays
+and is corrected here): the claim "direct pushes to main still work" was WRONG.
+Under `enforce_admins:true` + a required check, a direct push of a fresh commit
+to main is REJECTED ("Required status check \"verify\" is expected — protected
+branch hook declined"), because a new commit cannot have a passing check before
+it exists. True binding and direct-push-to-main are mutually exclusive.
+
+Presented the three-way choice to the human. Their explicit approval, quoted
+verbatim:
+
+> "Option 1 — keep enforce_admins:true; land via green PRs. For the log: this
+> project replaces self-discipline with machine enforcement, so option 2 is
+> ruled out on principle; option 3 lets verified work sit off the protected
+> trunk too long for a ~1-2 minute saving. Four refinements:
+> - Push the work branch to origin after every task, not just locally —
+>   in-progress work gets offsite backup too.
+> - One PR per rung boundary; the PR description carries the rung's measured
+>   numbers, same convention as the commit messages.
+> - STATUS.md records the active branch so a fresh session resumes on work,
+>   not main.
+> - === READY FOR SANDBOX REVIEW === blocks cite the main merge-commit sha —
+>   that is what gets independently verified.
+> - Record this decision as an AMENDMENT entry in ZERO.md quoting this message
+>   as the human approval, per the amendment rule.
+> Then resume the queue: 4b kernels, data refinery, rental prep."
+
+BINDING WORKFLOW (effective now):
+1. All development happens on branch `work` (or a rung-named branch); `main`
+   is updated ONLY via a CI-gated PR at each rung boundary. `enforce_admins`
+   stays ON. Self-discipline is not relied upon — the machine enforces.
+2. Push `work` to origin after every task (offsite backup of in-progress work).
+3. One PR per rung; its description carries that rung's measured numbers.
+4. STATUS.md names the active branch so a fresh session resumes there.
+5. Sandbox-review blocks cite the `main` merge-commit sha (the verified trunk).
+Queue after this: Day 4b (CUDA kernels) → data refinery → rental prep.
