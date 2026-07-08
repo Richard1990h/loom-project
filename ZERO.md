@@ -290,3 +290,49 @@ learning, not memorisation).
   no positional signal on this task. Prediction: roughly neutral here (the
   task is content-driven), reported honestly either way; RoPE's load-bearing
   claim is the relative-offset PROOF above, not this task's accuracy.
+
+## Appended 2026-07-07 — DAY 3: MEASURED RESULTS (zero/day3.c)
+
+New ops built on the day1 engine, each with a hand-derived backward rule:
+transpose, scale, causal-mask, row-softmax, RoPE, masked cross-entropy.
+
+**PROOFS (all executed):**
+- GRADCHECK (full attention stack, all 6 param tensors): max ABSOLUTE error
+  **5.24e-11**, max RELATIVE error over significant-gradient entries
+  **1.86e-08** → **PASS** (both « 1e-6). Note on method: a relative-only
+  gradcheck is the wrong instrument at the near-uniform-attention init, where
+  some Wq/Wk gradient entries are ~1e-7 and central-difference truncation
+  (~1e-11 absolute) is a large relative error while proving nothing wrong.
+  The absolute error (~5e-11) is the real evidence the backward is correct;
+  we also require relative<1e-6 on entries with |grad|>1e-3. This is a
+  disclosed refinement of the metric, not a moved goalpost — day1/day2 simply
+  never exercised near-zero-gradient parameters.
+- CAUSALITY, bit-exact: **PASS** — perturbing the input at position p leaves
+  every output row i<p bit-for-bit identical (exact double equality), all p.
+- RoPE RELATIVE offset: max |score(i,j) − score(i+Δ,j+Δ)| = **1.33e-15** →
+  **PASS** — the comparison depends only on i−j, to machine epsilon.
+
+**MEASUREMENT — induction task (V=8, L=24, d=32, 1 head, 4000 steps,
+minibatch 16, OUR RMSProp optimizer, fresh eval sequences):**
+| model                        | induction accuracy |
+|------------------------------|--------------------|
+| attention (RoPE, causal)     | **0.998**          |
+| attention, position OFF      | 0.815              |
+| uniform-causal baseline      | 0.290              |
+| chance (1/V)                 | 0.125              |
+- P1 (attention ≥ 0.90): **HIT** — 0.998.
+- P2 (uniform baseline ≤ 0.40): **HIT** — 0.290. Content addressing is the
+  big lever: 0.290 → 0.815 just by letting the query select its key.
+- KILL (attention ≤ baseline): **not triggered** (0.998 ≫ 0.290).
+- RoPE ablation — **MISS on my exploratory prediction.** I predicted position
+  would be "roughly neutral" on this content-driven task. Measured effect is
+  **+18.3 points** (0.815 → 0.998). Position is NOT decorative here: when a
+  token has several earlier occurrences, the induction rule needs the MOST
+  RECENT one; RoPE's relative-distance signal lets attention prefer the
+  nearest match and break the multi-match tie. Recorded as a miss, kept.
+
+Verdict: sequence machinery derived, built, proven (gradcheck + bit-exact
+causality + RoPE relative property), and measured. All locked bars met; one
+honest exploratory miss (position matters more than predicted). Next rung
+(Day 4): the byte discipline — float32 cache-aware kernels, then the CUDA
+port, all cited against hw.json.
