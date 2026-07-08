@@ -24,6 +24,10 @@ probes/gpu_attention
 # Corpus bytes — gigabytes not tracked; data/manifest.json IS tracked
 data/raw/
 data/clean/
+data/corpus.txt
+data/*.u16
+# training runs + checkpoints (large, reproducible)
+runs/
 
 # Disposable helpers
 _probe_*.sh

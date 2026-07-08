@@ -106,6 +106,54 @@ static void alloc_model(){
 static void zero_grads(){ for(int i=0;i<NPT;i++) Z(PL[i].g,PL[i].n); }
 static void opt_step(float lr){ for(int i=0;i<NPT;i++) krmsprop<<<(PL[i].n+255)/256,256>>>(PL[i].n,PL[i].p,PL[i].g,PL[i].v,lr,0.9f,1e-8f); }
 
+/* ================= CHECKPOINT FORMAT (documented) =================
+ * Little-endian binary, written/read by save_ckpt()/load_ckpt():
+ *   char   magic[4]   = "GPT0"
+ *   int32  version    = 1
+ *   int32  V, D, DFF, NL, L      (model config; a reader must match these)
+ *   int64  step                  (training step; 0 for a fresh/inference ckpt)
+ *   float32 params[]  : every parameter tensor, in registration order
+ *                       (E, lnfg, lnfb, then per layer l: Wq,Wk,Wv,Wo,W1,b1,
+ *                        W2,b2,l1g,l1b,l2g,l2b), each row-major, sizes implied
+ *                        by the config above.
+ *   float32 optv[]    : RMSProp running-mean-square state, same order+sizes.
+ * The REPL reads through the params block and ignores optv. Bit-exact
+ * round-trip is proven by `gpt ckpttest`.                                    */
+static int MAXTEN(){ int m=V*D; if(D*DFF>m)m=D*DFF; if(D*D>m)m=D*D; return m; }
+static void save_ckpt(const char*path,long long step){
+    FILE*f=fopen(path,"wb"); if(!f){printf("ckpt open fail %s\n",path);exit(1);}
+    int ver=1; fwrite("GPT0",1,4,f); fwrite(&ver,4,1,f);
+    fwrite(&V,4,1,f);fwrite(&D,4,1,f);fwrite(&DFF,4,1,f);fwrite(&NL,4,1,f);fwrite(&L,4,1,f);
+    fwrite(&step,8,1,f);
+    float*t=(float*)malloc((size_t)MAXTEN()*4);
+    for(int i=0;i<NPT;i++){ CK(cudaMemcpy(t,PL[i].p,(size_t)PL[i].n*4,cudaMemcpyDeviceToHost)); fwrite(t,4,PL[i].n,f); }
+    for(int i=0;i<NPT;i++){ CK(cudaMemcpy(t,PL[i].v,(size_t)PL[i].n*4,cudaMemcpyDeviceToHost)); fwrite(t,4,PL[i].n,f); }
+    free(t); fclose(f);
+}
+static long long load_ckpt(const char*path,int want_optv){
+    FILE*f=fopen(path,"rb"); if(!f){printf("ckpt open fail %s\n",path);exit(1);}
+    char mg[4]; int ver,cv,cd,cf,cn,cl; long long step;
+    if(fread(mg,1,4,f)!=4||memcmp(mg,"GPT0",4)){printf("bad ckpt magic\n");exit(1);}
+    fread(&ver,4,1,f); fread(&cv,4,1,f);fread(&cd,4,1,f);fread(&cf,4,1,f);fread(&cn,4,1,f);fread(&cl,4,1,f); fread(&step,8,1,f);
+    if(cv!=V||cd!=D||cf!=DFF||cn!=NL||cl!=L){ printf("ckpt config mismatch (%d %d %d %d %d)\n",cv,cd,cf,cn,cl); exit(1); }
+    float*t=(float*)malloc((size_t)MAXTEN()*4);
+    for(int i=0;i<NPT;i++){ if(fread(t,4,PL[i].n,f)!=(size_t)PL[i].n){printf("ckpt short read\n");exit(1);} CK(cudaMemcpy(PL[i].p,t,(size_t)PL[i].n*4,cudaMemcpyHostToDevice)); }
+    if(want_optv) for(int i=0;i<NPT;i++){ if(fread(t,4,PL[i].n,f)!=(size_t)PL[i].n){printf("ckpt short read v\n");exit(1);} CK(cudaMemcpy(PL[i].v,t,(size_t)PL[i].n*4,cudaMemcpyHostToDevice)); }
+    free(t); fclose(f); return step;
+}
+
+static void up(float*dev,const float*src,int n){ CK(cudaMemcpy(dev,src,(size_t)n*4,cudaMemcpyHostToDevice)); }
+static void initw(float*dev,int n,double s){ float*t=(float*)malloc(n*4); for(int i=0;i<n;i++)t[i]=(float)((2*urand()-1)*s); up(dev,t,n); free(t); }
+static void fillv(float*dev,int n,float val){ float*t=(float*)malloc(n*4); for(int i=0;i<n;i++)t[i]=val; up(dev,t,n); free(t); }
+static void init_model(){
+    initw(E,V*D,0.5/sqrt((double)D)); fillv(lnfg,D,1.f); Z(lnfb,D);
+    for(int l=0;l<NL;l++){ Layer*P=&P_[l];
+        initw(P->Wq,D*D,0.5/sqrt((double)D));initw(P->Wk,D*D,0.5/sqrt((double)D));initw(P->Wv,D*D,0.5/sqrt((double)D));initw(P->Wo,D*D,0.5/sqrt((double)D));
+        initw(P->W1,D*DFF,0.5/sqrt((double)D));Z(P->b1,DFF);initw(P->W2,D*DFF,0.5/sqrt((double)DFF));Z(P->b2,D);
+        fillv(P->l1g,D,1.f);Z(P->l1b,D);fillv(P->l2g,D,1.f);Z(P->l2b,D); }
+    for(int i=0;i<NPT;i++)Z(PL[i].v,PL[i].n);
+}
+
 /* ---- forward: Xoh[L,V] one-hot on device; fills logit; returns loss ---- */
 static double forward(const float*Xoh,const int*tg,const int*mask,int nact){
     GEMM(L,D,V,Xoh,0,E,0,Hs[0],0);
@@ -226,6 +274,51 @@ static double* hslot(float* devp,int j){
     return NULL;
 }
 
+/* ================= BPE tokenizer (load + encode + decode) for the REPL ====
+ * Reads the "BPE1" file written by zero/bpe.c. Chat tokens are ordinary text
+ * strings (e.g. "<|end|>"), so no special vocab is needed. */
+struct BPair{ int a,b; };
+static int TNM=0, TVOC=0; static BPair TMG[8192];
+static unsigned char* TVB[8192]; static int TVL[8192];
+static void load_tok(const char* path){
+    FILE*f=fopen(path,"rb"); if(!f){printf("no tokenizer %s\n",path);exit(1);} char mg[4];
+    if(fread(mg,1,4,f)!=4||memcmp(mg,"BPE1",4)){printf("bad tok magic\n");exit(1);}
+    fread(&TVOC,4,1,f); fread(&TNM,4,1,f);
+    for(int i=0;i<TNM;i++){ fread(&TMG[i].a,4,1,f); fread(&TMG[i].b,4,1,f); } fclose(f);
+    for(int i=0;i<256;i++){ TVB[i]=(unsigned char*)malloc(1); TVB[i][0]=(unsigned char)i; TVL[i]=1; }
+    for(int k=0;k<TNM;k++){ int id=256+k,a=TMG[k].a,b=TMG[k].b,l=TVL[a]+TVL[b]; TVB[id]=(unsigned char*)malloc(l); memcpy(TVB[id],TVB[a],TVL[a]); memcpy(TVB[id]+TVL[a],TVB[b],TVL[b]); TVL[id]=l; }
+}
+static int bpe_encode(const char* s,int slen,int* out){
+    int N=slen; for(int i=0;i<slen;i++)out[i]=(unsigned char)s[i];
+    for(int k=0;k<TNM;k++){ int a=TMG[k].a,b=TMG[k].b,id=256+k,w=0; for(int i=0;i<N;){ if(i+1<N&&out[i]==a&&out[i+1]==b){out[w++]=id;i+=2;}else out[w++]=out[i++]; } N=w; }
+    return N;
+}
+static void bpe_decode(const int* t,int n,char* out,int* olen){ int w=0; for(int i=0;i<n;i++){ memcpy(out+w,TVB[t[i]],TVL[t[i]]); w+=TVL[t[i]]; } out[w]=0; *olen=w; }
+
+/* sample next token from a host logit row [V]: temperature + top-k */
+static int sample_next(const float* lg,float temp,int topk){
+    static int* idx=NULL; if(!idx) idx=(int*)malloc(V*sizeof(int));
+    double* p=(double*)malloc(V*sizeof(double));
+    for(int v=0;v<V;v++){ p[v]=lg[v]/(temp>1e-4?temp:1e-4); idx[v]=v; }
+    /* top-k: partial selection of k largest */
+    if(topk>0 && topk<V){ for(int i=0;i<topk;i++){ int mx=i; for(int j=i+1;j<V;j++) if(p[idx[j]]>p[idx[mx]])mx=j; int t=idx[i];idx[i]=idx[mx];idx[mx]=t; }
+        double thr=p[idx[topk-1]]; for(int v=0;v<V;v++) if(p[v]<thr)p[v]=-1e30; }
+    double mx=-1e300; for(int v=0;v<V;v++)if(p[v]>mx)mx=p[v]; double se=0; for(int v=0;v<V;v++){ p[v]=exp(p[v]-mx); se+=p[v]; }
+    double r=urand()*se, c=0; int out=V-1; for(int v=0;v<V;v++){ c+=p[v]; if(c>=r){ out=v; break; } }
+    free(p); return out;
+}
+/* run the transformer on the last min(len,L) tokens; return next-token logits (host) */
+static float* GX=NULL; static float* GdX=NULL;
+static void logits_at(const int* toks,int len,float* out){
+    if(!GX){ GX=(float*)malloc((size_t)L*V*4); GdX=dm(L*V); }
+    int k=len<L?len:L; const int* w=toks+(len-k);
+    memset(GX,0,(size_t)L*V*4); for(int i=0;i<k;i++)GX[i*V+w[i]]=1.f;
+    static int tg[512],ms[512]; for(int i=0;i<L;i++){tg[i]=0;ms[i]=0;}
+    CK(cudaMemcpy(GdX,GX,(size_t)L*V*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dtg,tg,L*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dmask,ms,L*4,cudaMemcpyHostToDevice));
+    forward(GdX,dtg,dmask,0);
+    CK(cudaMemcpy(out,logit+(k-1)*V,(size_t)V*4,cudaMemcpyDeviceToHost));
+}
+
 static void gen_seq(int*x,int*tg,int*mask,int*nact,float*Xoh){
     for(int i=0;i<L;i++)x[i]=irnd(V);
     memset(Xoh,0,(size_t)L*V*4); for(int i=0;i<L;i++)Xoh[i*V+x[i]]=1.f;
@@ -278,5 +371,93 @@ int main(int argc,char**argv){
                worstabs,worstrel,gc?"true":"false",worstpar,par?"true":"false",pass?"true":"false");
         return pass?0:1;
     }
-    printf("usage: gpt check | gpt train ...\n"); return 2;
+    if(argc>=2 && !strcmp(argv[1],"ckpttest")){
+        V=16;D=32;DFF=64;NL=2;L=12;SCALE=1.f/sqrtf((float)D); seed(42); alloc_model(); init_model();
+        /* snapshot params+v to host A */
+        int tot=0; for(int i=0;i<NPT;i++)tot+=PL[i].n;
+        float*A=(float*)malloc((size_t)tot*2*4); int off=0;
+        for(int i=0;i<NPT;i++){ CK(cudaMemcpy(A+off,PL[i].p,(size_t)PL[i].n*4,cudaMemcpyDeviceToHost)); off+=PL[i].n; }
+        for(int i=0;i<NPT;i++){ CK(cudaMemcpy(A+off,PL[i].v,(size_t)PL[i].n*4,cudaMemcpyDeviceToHost)); off+=PL[i].n; }
+        save_ckpt("/tmp/ckpt_test.bin", 12345);
+        for(int i=0;i<NPT;i++){ Z(PL[i].p,PL[i].n); Z(PL[i].v,PL[i].n); }         /* corrupt */
+        long long st=load_ckpt("/tmp/ckpt_test.bin",1);
+        float*B=(float*)malloc((size_t)tot*2*4); off=0;
+        for(int i=0;i<NPT;i++){ CK(cudaMemcpy(B+off,PL[i].p,(size_t)PL[i].n*4,cudaMemcpyDeviceToHost)); off+=PL[i].n; }
+        for(int i=0;i<NPT;i++){ CK(cudaMemcpy(B+off,PL[i].v,(size_t)PL[i].n*4,cudaMemcpyDeviceToHost)); off+=PL[i].n; }
+        int ok = (st==12345) && (memcmp(A,B,(size_t)tot*2*4)==0);
+        printf("checkpoint round-trip: step %lld, %d floats (params+optv) -> %s\n", st, tot*2, ok?"BIT-EXACT":"MISMATCH");
+        printf("JSON {\"ckpt_step\":%lld,\"ckpt_bitexact\":%s}\n", st, ok?"true":"false");
+        return ok?0:1;
+    }
+    if(argc>=5 && !strcmp(argv[1],"train")){
+        const char*tokf=argv[2]; const char*ckpt=argv[3]; long steps=atol(argv[4]); int resume=(argc>=6&&!strcmp(argv[5],"resume"));
+        /* milestone config */
+        V=2048;D=256;DFF=1024;NL=4;L=128;SCALE=1.f/sqrtf((float)D); int B=8; float lr=3e-4f;
+        seed(777); alloc_model();
+        /* load tokens (uint16) */
+        FILE*tf=fopen(tokf,"rb"); if(!tf){printf("no tokfile %s\n",tokf);return 1;} fseek(tf,0,SEEK_END); long fb=ftell(tf); fseek(tf,0,SEEK_SET);
+        long NT=fb/2; unsigned short*u=(unsigned short*)malloc(fb); if(fread(u,2,NT,tf)!=(size_t)NT){printf("tok read fail\n");return 1;} fclose(tf);
+        int*toks=(int*)malloc(NT*sizeof(int)); for(long i=0;i<NT;i++)toks[i]=u[i]; free(u);
+        long NVal=NT/10, NTrain=NT-NVal;
+        printf("tokens: %ld (train %ld, val %ld), config V=%d D=%d DFF=%d NL=%d L=%d B=%d\n",NT,NTrain,NVal,V,D,DFF,NL,L,B);
+        int np=0; for(int i=0;i<NPT;i++)np+=PL[i].n; printf("params: %d (%.2fM)\n",np,np/1e6);
+        /* bigram baseline val CE (add-1 smoothing) */
+        double bigCE=0; { long*rc=(long*)calloc(V,8); long*cc=(long*)calloc((size_t)V*V,8);
+            for(long i=0;i<NTrain-1;i++){ cc[(long)toks[i]*V+toks[i+1]]++; rc[toks[i]]++; }
+            double s=0; long cnt=0; for(long i=NTrain;i<NT-1;i++){ int a=toks[i],b=toks[i+1]; double p=(cc[(long)a*V+b]+1.0)/(rc[a]+(double)V); s+=-log(p); cnt++; }
+            bigCE=cnt>0?s/cnt:0; free(rc);free(cc); }
+        printf("bigram baseline val CE = %.4f nats  (bar: model must beat by >=0.3)\n", bigCE);
+        long step0=0;
+        if(resume){ FILE*c=fopen(ckpt,"rb"); if(c){fclose(c); step0=load_ckpt(ckpt,1); printf("RESUMED from step %ld\n",step0);} else { init_model(); printf("no ckpt to resume; fresh init\n"); } }
+        else init_model();
+        float*Xoh=(float*)malloc((size_t)L*V*4); float*dX=dm(L*V); int tg[512],mask[512];
+        /* val eval helper (sample ns windows) */
+        auto eval=[&](int ns)->double{ double s=0; int c=0; for(int q=0;q<ns;q++){ long p=NTrain+(long)(urand()*(NVal-L-1)); if(p<0)p=0;
+            memset(Xoh,0,(size_t)L*V*4); int nact=0; for(int i=0;i<L;i++){ Xoh[i*V+toks[p+i]]=1.f; tg[i]=toks[p+i+1]; mask[i]=1; nact++; }
+            CK(cudaMemcpy(dX,Xoh,(size_t)L*V*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dtg,tg,L*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dmask,mask,L*4,cudaMemcpyHostToDevice));
+            s+=forward(dX,dtg,dmask,nact); c++; } return c?s/c:0; };
+        double t_ema=0;
+        for(long step=step0+1; step<=steps; step++){
+            zero_grads(); double tl=0;
+            for(int b=0;b<B;b++){ long p=(long)(urand()*(NTrain-L-1)); if(p<0)p=0;
+                memset(Xoh,0,(size_t)L*V*4); int nact=0; for(int i=0;i<L;i++){ Xoh[i*V+toks[p+i]]=1.f; tg[i]=toks[p+i+1]; mask[i]=1; nact++; }
+                CK(cudaMemcpy(dX,Xoh,(size_t)L*V*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dtg,tg,L*4,cudaMemcpyHostToDevice)); CK(cudaMemcpy(dmask,mask,L*4,cudaMemcpyHostToDevice));
+                tl+=forward(dX,dtg,dmask,nact); backward(dX); }
+            opt_step(lr); CK(cudaDeviceSynchronize());
+            tl/=B; t_ema = t_ema==0? tl : 0.98*t_ema+0.02*tl;
+            if(step%100==0){ printf("step %ld/%ld  train %.4f (ema %.4f)\n",step,steps,tl,t_ema); fflush(stdout); }
+            if(step%1000==0 || step==steps){ double vl=eval(64); printf("  [step %ld] VAL %.4f  (bigram %.4f, gap %.4f)\n",step,vl,bigCE,bigCE-vl); fflush(stdout);
+                save_ckpt(ckpt,step); }
+        }
+        double vl=eval(256); printf("\nFINAL val CE %.4f  bigram %.4f  gap %.4f  -> %s\n",vl,bigCE,bigCE-vl,(bigCE-vl>=0.3)?"BEATS BASELINE (bar met)":"below bar");
+        printf("JSON {\"final_val_ce\":%.4f,\"bigram_ce\":%.4f,\"gap\":%.4f,\"bar_met\":%s}\n",vl,bigCE,bigCE-vl,(bigCE-vl>=0.3)?"true":"false");
+        save_ckpt(ckpt,steps);
+        return 0;
+    }
+    if(argc>=4 && !strcmp(argv[1],"talk")){
+        const char*ckpt=argv[2]; const char*tokf=argv[3];
+        float temp=argc>=5?atof(argv[4]):0.8f; int topk=argc>=6?atoi(argv[5]):40;
+        V=2048;D=256;DFF=1024;NL=4;L=128;SCALE=1.f/sqrtf((float)D); seed(12345); alloc_model();
+        load_ckpt(ckpt,0); load_tok(tokf);
+        static int hist[16384]; int hlen=0; char line[8192];
+        fprintf(stderr,"loom chat REPL (temp %.2f, top-k %d). Type a message; Ctrl-D to quit.\n",temp,topk);
+        while(fgets(line,sizeof(line),stdin)){
+            int n=strlen(line); while(n>0&&(line[n-1]=='\n'||line[n-1]=='\r'))line[--n]=0;
+            if(n==0) continue;
+            char buf[16384]; snprintf(buf,sizeof(buf),"<|user|>\n%s\n<|assistant|>\n",line);
+            static int enc[16384]; int ne=bpe_encode(buf,strlen(buf),enc);
+            for(int i=0;i<ne&&hlen<15000;i++)hist[hlen++]=enc[i];
+            int gstart=hlen; static char dec[65536]; int dl=0;
+            for(int step=0;step<220 && hlen<15500;step++){
+                float lg[2048]; logits_at(hist,hlen,lg);
+                int nt=sample_next(lg,temp,topk); hist[hlen++]=nt;
+                bpe_decode(hist+gstart,hlen-gstart,dec,&dl);
+                if(strstr(dec,"<|end|>"))break;
+            }
+            char* e=strstr(dec,"<|end|>"); if(e)*e=0;
+            printf("%s\n",dec); fflush(stdout);
+        }
+        return 0;
+    }
+    printf("usage: gpt check | gpt ckpttest | gpt train <tok> <ckpt> <steps> [resume] | gpt talk <ckpt> <tok> [temp] [topk]\n"); return 2;
 }
