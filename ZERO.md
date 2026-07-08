@@ -575,3 +575,25 @@ documented in bpe.c header).
 - Corpus tokenizes to 1,779,479 tokens. For a 2–8M model that is a small token
   budget (heavily undertrained vs compute-optimal); consistent with the
   pre-registered "mechanism, not eloquence" milestone bar.
+
+## Appended 2026-07-07 — DAY 5e: full transformer assembled + proven (PASS)
+
+zero/day5.c — the full transformer LM in the CPU autodiff engine (ARTIFACT,
+pure C). Config-driven; pre-norm architecture:
+  h = embed(tokens)
+  per layer:  h += attn(LN(h));  h += ffn(LN(h))
+  logits = LN(h) @ Eᵀ           (output head TIED to the token embedding)
+Attention: RoPE on Q,K, scaled dot-product, causal mask, softmax, O·Wo. FFN:
+Linear→GELU(erf-exact)→Linear. Three NEW ops added with hand-derived backward —
+elementwise add (residuals), GELU, LayerNorm (gain via the op, bias via addb).
+
+Proof config (small, so finite-difference gradcheck is fast): d=32, 2 layers,
+d_ff=64, vocab=16, L=12, 27 param tensors / 17,408 params.
+- **GRADCHECK on the assembled stack: max-abs 1.85e-10, max-rel (significant)
+  1.98e-08 → PASS** (both « 1e-6). Every new op + the multi-layer composition
+  + tied head differentiate correctly.
+- **BIT-EXACT CAUSALITY: PASS** — perturbing the input token at position p
+  leaves every output logit row i < p bit-for-bit identical.
+
+Architecture proven correct. The Day-5g milestone scales the SAME architecture
+(larger d/layers/L) and trains it on the GPU path (parity-proven in 4c).
